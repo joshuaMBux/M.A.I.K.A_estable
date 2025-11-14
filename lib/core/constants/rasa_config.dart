@@ -1,14 +1,27 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+
 class RasaConfig {
   // URLs de Rasa para diferentes entornos
-  static const String localRasaUrl =
-      'http://localhost:5005/webhooks/rest/webhook';
+  static const String localDesktopUrl =
+      'http://127.0.0.1:5005/webhooks/rest/webhook';
+  static const String androidEmulatorUrl =
+      'http://10.0.2.2:5005/webhooks/rest/webhook';
+  static const String iosSimulatorUrl =
+      'http://127.0.0.1:5005/webhooks/rest/webhook';
   static const String dockerRasaUrl =
+      'http://localhost:5005/webhooks/rest/webhook';
+  static const String webDebugUrl =
       'http://localhost:5005/webhooks/rest/webhook';
   static const String cloudRasaUrl =
       'https://your-rasa-instance.com/webhooks/rest/webhook';
 
+  // Permite forzar una URL (por ejemplo, desde ajustes o pruebas)
+  static String? _overrideUrl;
+
   // URL actual que se está usando
-  static const String currentRasaUrl = localRasaUrl;
+  static String get currentRasaUrl =>
+      _overrideUrl ?? _resolveDefaultUrlForPlatform();
 
   // Configuración de timeouts
   static const Duration connectionTimeout = Duration(seconds: 10);
@@ -46,17 +59,49 @@ class RasaConfig {
   static const bool enableDebugMode = true;
   static const bool showRawResponses = false;
 
+  static void overrideRasaUrl(String url) {
+    if (!isValidRasaUrl(url)) {
+      throw ArgumentError('URL de Rasa inválida: $url');
+    }
+    _overrideUrl = url;
+  }
+
+  static void clearOverride() => _overrideUrl = null;
+
   // Método para obtener la URL de Rasa según el entorno
   static String getRasaUrl({String? environment}) {
     switch (environment?.toLowerCase()) {
       case 'local':
-        return localRasaUrl;
+        return localDesktopUrl;
+      case 'android':
+        return androidEmulatorUrl;
+      case 'ios':
+        return iosSimulatorUrl;
       case 'docker':
         return dockerRasaUrl;
+      case 'web':
+        return webDebugUrl;
       case 'cloud':
         return cloudRasaUrl;
       default:
         return currentRasaUrl;
+    }
+  }
+
+  static String _resolveDefaultUrlForPlatform() {
+    if (kIsWeb) {
+      return webDebugUrl;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return androidEmulatorUrl;
+      case TargetPlatform.iOS:
+        return iosSimulatorUrl;
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return localDesktopUrl;
     }
   }
 
@@ -76,6 +121,7 @@ class RasaConfig {
       'maxRetries': maxRetries,
       'enableLogging': enableLogging,
       'enableDebugMode': enableDebugMode,
+      if (_overrideUrl != null) 'overrideUrl': _overrideUrl,
     };
   }
 }

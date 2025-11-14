@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../main/main_app.dart';
 
@@ -46,6 +47,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -64,68 +68,84 @@ class _AuthScreenState extends State<AuthScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF6750A4), Color(0xFF8B5CF6)],
+              colors: [
+                AppColors.darkBackground,
+                AppColors.darkSurfaceVariant,
+              ],
             ),
           ),
           child: SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    const Spacer(),
+                    const SizedBox(height: 40),
 
                     // Logo y título
                     Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.45),
+                            AppColors.primaryVariant.withValues(alpha: 0.45),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(60),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 25,
+                            offset: const Offset(0, 15),
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.church,
-                        size: 60,
-                        color: Color(0xFF6750A4),
+                        size: 56,
+                        color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 32),
                     Text(
                       AppConstants.appName,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineLarge?.copyWith(
-                        color: Colors.white,
+                      style: textTheme.headlineLarge?.copyWith(
+                        color: colorScheme.onPrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       AppConstants.appSubtitle,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                      ),
                     ),
                     const SizedBox(height: 48),
 
                     // Campos de entrada
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.06),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 30,
+                            offset: const Offset(0, 18),
                           ),
                         ],
                       ),
@@ -198,25 +218,25 @@ class _AuthScreenState extends State<AuthScreen> {
                                 width: double.infinity,
                                 height: 50,
                                 child: ElevatedButton(
-                                  onPressed:
-                                      state is AuthLoading ? null : _handleAuth,
+                                  onPressed: state is AuthLoading
+                                      ? null
+                                      : _handleAuth,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6750A4),
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: colorScheme.primary,
+                                    foregroundColor: colorScheme.onPrimary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  child:
-                                      state is AuthLoading
-                                          ? const CircularProgressIndicator(
-                                            color: Colors.white,
-                                          )
-                                          : Text(
-                                            _isLogin
-                                                ? 'Iniciar Sesión'
-                                                : 'Registrarse',
-                                          ),
+                                  child: state is AuthLoading
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                      : Text(
+                                          _isLogin
+                                              ? 'Iniciar Sesión'
+                                              : 'Registrarse',
+                                        ),
                                 ),
                               );
                             },
@@ -237,10 +257,12 @@ class _AuthScreenState extends State<AuthScreen> {
                         _isLogin
                             ? '¿No tienes cuenta? Regístrate'
                             : '¿Ya tienes cuenta? Inicia sesión',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: colorScheme.onPrimary.withValues(alpha: 0.85),
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),

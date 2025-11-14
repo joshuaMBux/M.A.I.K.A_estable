@@ -95,4 +95,20 @@ class VerseRepositoryImpl implements VerseRepository {
       'Paz',
     ];
   }
+
+  @override
+  Future<Verse?> getVerseOfTheDay() async {
+    // Por ahora devolver Juan 3:16 como versículo del día
+    return VerseModel(
+      id: '1',
+      book: 'Juan',
+      chapter: 3,
+      verse: 16,
+      text:
+          'Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.',
+      translation: 'RVR1960',
+      tags: ['amor', 'salvación', 'vida eterna'],
+      isFavorite: false,
+    );
+  }
 }

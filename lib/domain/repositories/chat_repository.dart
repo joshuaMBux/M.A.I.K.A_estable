@@ -1,8 +1,25 @@
 import '../entities/chat_message.dart';
+import '../entities/chat_session.dart';
 
 abstract class ChatRepository {
-  Future<List<ChatMessage>> sendMessage(String message, String sender);
-  Future<List<ChatMessage>> getChatHistory();
-  Future<void> saveChatHistory(List<ChatMessage> messages);
-  Future<void> clearChatHistory();
+  Future<ChatSession> loadSession({String? conversationId});
+
+  Future<ChatSession> sendMessage({
+    required String conversationId,
+    required String text,
+    String? payload,
+    bool fromSuggestion = false,
+  });
+
+  Future<ChatSession> syncPending(String conversationId);
+
+  Future<void> toggleFavorite({
+    required String messageId,
+    required bool isFavorite,
+    String? note,
+  });
+
+  Stream<bool> watchConnection();
+
+  List<ChatActionChip> defaultSuggestions();
 }

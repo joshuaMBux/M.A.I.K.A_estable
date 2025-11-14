@@ -49,12 +49,24 @@ La pantalla de testing muestra automáticamente:
 
 ### URLs de Rasa
 
-Puedes configurar diferentes URLs en `lib/core/constants/rasa_config.dart`:
+`RasaConfig` ahora detecta automáticamente la plataforma (web, Android, iOS, escritorio) y usa la URL adecuada declarada en `lib/core/constants/rasa_config.dart`. Las más comunes ya están listas:
 
 ```dart
-static const String localRasaUrl = 'http://localhost:5005/webhooks/rest/webhook';
-static const String dockerRasaUrl = 'http://localhost:5005/webhooks/rest/webhook';
-static const String cloudRasaUrl = 'https://your-rasa-instance.com/webhooks/rest/webhook';
+static const String webDebugUrl =
+    'http://localhost:5005/webhooks/rest/webhook';
+static const String androidEmulatorUrl =
+    'http://10.0.2.2:5005/webhooks/rest/webhook';
+static const String localDesktopUrl =
+    'http://127.0.0.1:5005/webhooks/rest/webhook';
+```
+
+Si necesitas apuntar a otro host (por ejemplo, un túnel `ngrok` o un servidor cloud) agrega la URL y sobrescribe desde tu código de arranque:
+
+```dart
+void main() {
+  RasaConfig.overrideRasaUrl('https://mi-rasa.ngrok.io/webhooks/rest/webhook');
+  runApp(const MaikaApp());
+}
 ```
 
 ### Configuración de Timeouts

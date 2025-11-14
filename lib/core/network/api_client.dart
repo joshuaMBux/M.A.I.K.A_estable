@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../constants/rasa_config.dart';
 
@@ -16,8 +17,8 @@ class ApiClient {
   }) async {
     try {
       if (RasaConfig.enableLogging && RasaConfig.logRequests) {
-        print('🌐 API Request to: $url');
-        print('📤 Request body: ${jsonEncode(body)}');
+        developer.log('API request to: $url', name: 'ApiClient');
+        developer.log('Request body: ${jsonEncode(body)}', name: 'ApiClient');
       }
 
       final response = await _client
@@ -29,8 +30,11 @@ class ApiClient {
           .timeout(RasaConfig.responseTimeout);
 
       if (RasaConfig.enableLogging && RasaConfig.logResponses) {
-        print('📥 Response status: ${response.statusCode}');
-        print('📥 Response body: ${response.body}');
+        developer.log(
+          'Response status: ${response.statusCode}',
+          name: 'ApiClient',
+        );
+        developer.log('Response body: ${response.body}', name: 'ApiClient');
       }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -40,11 +44,11 @@ class ApiClient {
           'HTTP Error: ${response.statusCode} - ${response.body}',
         );
       }
-    } catch (e) {
+    } catch (error) {
       if (RasaConfig.enableLogging && RasaConfig.logErrors) {
-        print('❌ API Error: $e');
+        developer.log('API Error: $error', name: 'ApiClient', error: error);
       }
-      throw Exception('Network Error: $e');
+      throw Exception('Network Error: $error');
     }
   }
 
@@ -56,7 +60,7 @@ class ApiClient {
     final url = customUrl ?? RasaConfig.currentRasaUrl;
 
     if (!RasaConfig.isValidRasaUrl(url)) {
-      throw Exception('URL de Rasa inválida: $url');
+      throw Exception('URL de Rasa invalida: $url');
     }
 
     final response = await post(
@@ -65,26 +69,24 @@ class ApiClient {
     );
 
     if (response is List) {
-      return (response as List)
-          .map((item) => Map<String, dynamic>.from(item))
+      return response
+          .map((item) => Map<String, dynamic>.from(item as Map))
           .toList();
     } else {
       return [response as Map<String, dynamic>];
     }
   }
 
-  // Método para probar la conexión con Rasa
   Future<bool> testRasaConnection({String? customUrl}) async {
     try {
       final url = customUrl ?? RasaConfig.currentRasaUrl;
       await sendMessageToRasa('test', 'test_user', customUrl: url);
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  // Método para obtener información de la configuración actual
   Map<String, dynamic> getConnectionInfo() {
     return {
       'currentUrl': RasaConfig.currentRasaUrl,

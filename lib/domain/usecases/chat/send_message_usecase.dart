@@ -1,12 +1,22 @@
-import '../../entities/chat_message.dart';
 import '../../repositories/chat_repository.dart';
+import '../../entities/chat_session.dart';
 
-class SendMessageUseCase {
+class SendChatMessageUseCase {
   final ChatRepository repository;
 
-  SendMessageUseCase(this.repository);
+  SendChatMessageUseCase(this.repository);
 
-  Future<List<ChatMessage>> execute(String message, String sender) {
-    return repository.sendMessage(message, sender);
+  Future<ChatSession> execute({
+    required String conversationId,
+    required String text,
+    String? payload,
+    bool fromSuggestion = false,
+  }) {
+    return repository.sendMessage(
+      conversationId: conversationId,
+      text: text,
+      payload: payload,
+      fromSuggestion: fromSuggestion,
+    );
   }
 }

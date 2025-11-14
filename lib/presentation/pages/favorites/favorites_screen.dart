@@ -1,154 +1,173 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textPrimary = scheme.textPrimary;
+    final textSecondary = scheme.textSecondary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
-      body: Stack(
-        children: [
-          // Fondo con gradiente sutil
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+      backgroundColor: scheme.surface,
+      appBar: AppBar(title: const Text('Favoritos')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _FavoritesHero(
+              scheme: scheme,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: 5,
+                itemBuilder: (context, index) {
+                  return _FavoriteCard(
+                    scheme: scheme,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    title:
+                        _sampleFavorites[index %
+                            _sampleFavorites.length]['reference']!,
+                    body:
+                        _sampleFavorites[index %
+                            _sampleFavorites.length]['text']!,
+                    category:
+                        _sampleFavorites[index %
+                            _sampleFavorites.length]['category']!,
+                  );
+                },
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const List<Map<String, String>> _sampleFavorites = [
+    {
+      'text':
+          'Porque de tal manera amo Dios al mundo, que ha dado a su Hijo unigenito, para que todo aquel que en el cree, no se pierda, mas tenga vida eterna.',
+      'reference': 'Juan 3:16',
+      'category': 'Amor',
+    },
+    {
+      'text': 'El Senor es mi pastor, nada me faltara.',
+      'reference': 'Salmo 23:1',
+      'category': 'Cuidado',
+    },
+    {
+      'text':
+          'Confia en el Senor con todo tu corazon, y no te apoyes en tu propia prudencia.',
+      'reference': 'Proverbios 3:5',
+      'category': 'Sabiduria',
+    },
+  ];
+}
+
+class _FavoritesHero extends StatelessWidget {
+  final ColorScheme scheme;
+  final Color textPrimary;
+  final Color textSecondary;
+
+  const _FavoritesHero({
+    required this.scheme,
+    required this.textPrimary,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [scheme.primary, scheme.secondary]),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 26,
+            offset: Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: scheme.onPrimary.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(Icons.favorite, color: scheme.onPrimary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tus versiculos guardados',
+                  style: TextStyle(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  'Regresa a ellos cuando necesites animo.',
+                  style: TextStyle(
+                    color: scheme.onPrimary.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
-
-          // Contenido principal
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEC4899).withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Color(0xFFEC4899),
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Mis Favoritos',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Versículos que has guardado',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 35,
-                          height: 35,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(17.5),
-                          ),
-                          child: Icon(
-                            Icons.favorite,
-                            color: const Color(0xFFEC4899),
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Lista de favoritos
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: 5,
-                      itemBuilder: (context, index) {
-                        return _buildFavoriteCard(context, index);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Icon(
+            Icons.arrow_forward_ios,
+            color: scheme.onPrimary.withValues(alpha: 0.8),
+            size: 16,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildFavoriteCard(BuildContext context, int index) {
-    final favorites = [
-      {
-        'text':
-            'Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.',
-        'reference': 'Juan 3:16',
-        'category': 'Amor',
-      },
-      {
-        'text': 'El Señor es mi pastor, nada me faltará.',
-        'reference': 'Salmos 23:1',
-        'category': 'Confianza',
-      },
-      {
-        'text':
-            'Confía en el Señor con todo tu corazón, y no te apoyes en tu propia prudencia.',
-        'reference': 'Proverbios 3:5',
-        'category': 'Sabiduría',
-      },
-    ];
+class _FavoriteCard extends StatelessWidget {
+  final ColorScheme scheme;
+  final Color textPrimary;
+  final Color textSecondary;
+  final String title;
+  final String body;
+  final String category;
 
-    final favorite = favorites[index % favorites.length];
+  const _FavoriteCard({
+    required this.scheme,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.title,
+    required this.body,
+    required this.category,
+  });
 
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: scheme.borderWithOverlay(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,55 +180,38 @@ class FavoritesScreen extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6B46C1).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(15),
+                  color: scheme.primary.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: const Color(0xFF6B46C1).withOpacity(0.3),
-                    width: 1,
+                    color: scheme.primary.withValues(alpha: 0.24),
                   ),
                 ),
                 child: Text(
-                  favorite['category']!,
-                  style: const TextStyle(
-                    color: Color(0xFF6B46C1),
+                  category,
+                  style: TextStyle(
+                    color: scheme.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               const Spacer(),
-              Container(
-                width: 35,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEC4899).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(17.5),
-                ),
-                child: Icon(
-                  Icons.favorite,
-                  color: const Color(0xFFEC4899),
-                  size: 18,
-                ),
-              ),
+              Icon(Icons.favorite, color: const Color(0xFFEC4899), size: 20),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
-            favorite['text']!,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-              height: 1.5,
-            ),
+            body,
+            style: TextStyle(color: textPrimary, fontSize: 14, height: 1.5),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
-            favorite['reference']!,
-            style: const TextStyle(
-              color: Color(0xFF6B46C1),
+            title,
+            style: TextStyle(
+              color: scheme.primary,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
               fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

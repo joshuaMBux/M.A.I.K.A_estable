@@ -116,13 +116,20 @@ Edita `lib/core/constants/rasa_config.dart`:
 
 ```dart
 class RasaConfig {
-  // URLs de conexión
-  static const String localRasaUrl = 'http://localhost:5005';
-  static const String dockerRasaUrl = 'http://rasa:5005';
-  static const String cloudRasaUrl = 'https://tu-rasa-cloud.com';
-  
-  // URL actual (cambiar según tu configuración)
-  static const String currentRasaUrl = localRasaUrl;
+  static const String localDesktopUrl =
+      'http://127.0.0.1:5005/webhooks/rest/webhook';
+  static const String androidEmulatorUrl =
+      'http://10.0.2.2:5005/webhooks/rest/webhook';
+  static const String iosSimulatorUrl =
+      'http://127.0.0.1:5005/webhooks/rest/webhook';
+  static const String webDebugUrl =
+      'http://localhost:5005/webhooks/rest/webhook';
+  static const String cloudRasaUrl =
+      'https://tu-rasa-cloud.com/webhooks/rest/webhook';
+
+  // `currentRasaUrl` ahora se resuelve automáticamente según la plataforma.
+  // Si necesitas forzar una URL:
+  // RasaConfig.overrideRasaUrl('https://mi-servidor.ngrok.io/webhooks/rest/webhook');
 }
 ```
 

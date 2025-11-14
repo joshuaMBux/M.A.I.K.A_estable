@@ -6,4 +6,5 @@ abstract class VerseRepository {
   Future<List<Verse>> getFavoriteVerses();
   Future<void> toggleFavorite(String verseId);
   Future<List<String>> getCategories();
+  Future<Verse?> getVerseOfTheDay();
 }
