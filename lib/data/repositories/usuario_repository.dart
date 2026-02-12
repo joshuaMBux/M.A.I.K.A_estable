@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import '../../core/database/database_helper.dart';
 import '../models/usuario_model.dart';
@@ -5,13 +8,23 @@ import '../models/usuario_model.dart';
 class UsuarioRepository {
   final DatabaseHelper? _dbHelper = kIsWeb ? null : DatabaseHelper();
 
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<int> insertUsuario(Usuario usuario) async {
     if (kIsWeb) {
       // Simular inserción en web
       return 1;
     }
     final db = await _dbHelper!.database;
-    return await db.insert('usuario', usuario.toMap());
+    final data = usuario.toMap();
+    if (usuario.pwd != null && usuario.pwd!.isNotEmpty) {
+      data['pwd'] = _hashPassword(usuario.pwd!);
+    }
+    return await db.insert('usuario', data);
   }
 
   Future<Usuario?> getUsuarioByEmail(String email) async {
@@ -56,11 +69,22 @@ class UsuarioRepository {
       return null;
     }
     final db = await _dbHelper!.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    // Primero intentar con contraseña hasheada (nuevo formato)
+    final hashed = _hashPassword(password);
+    List<Map<String, dynamic>> maps = await db.query(
       'usuario',
       where: 'email = ? AND pwd = ?',
-      whereArgs: [email, password],
+      whereArgs: [email, hashed],
     );
+
+    // Fallback: soportar usuarios antiguos con contraseña en texto plano
+    if (maps.isEmpty) {
+      maps = await db.query(
+        'usuario',
+        where: 'email = ? AND pwd = ?',
+        whereArgs: [email, password],
+      );
+    }
 
     if (maps.isNotEmpty) {
       return Usuario.fromMap(maps.first);
@@ -79,9 +103,13 @@ class UsuarioRepository {
       return 1;
     }
     final db = await _dbHelper!.database;
+    final data = usuario.toMap();
+    if (usuario.pwd != null && usuario.pwd!.isNotEmpty) {
+      data['pwd'] = _hashPassword(usuario.pwd!);
+    }
     return await db.update(
       'usuario',
-      usuario.toMap(),
+      data,
       where: 'id_usuario = ?',
       whereArgs: [usuario.idUsuario],
     );

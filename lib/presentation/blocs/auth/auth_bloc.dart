@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/usecases/auth/login_usecase.dart';
+import '../../../domain/repositories/auth_repository.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -65,8 +66,12 @@ class AuthFailure extends AuthState {
 // BLoC
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
+  final AuthRepository authRepository;
 
-  AuthBloc({required this.loginUseCase}) : super(AuthInitial()) {
+  AuthBloc({
+    required this.loginUseCase,
+    required this.authRepository,
+  }) : super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<RegisterRequested>(_onRegisterRequested);
     on<LogoutRequested>(_onLogoutRequested);
@@ -81,8 +86,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await loginUseCase.execute(event.email, event.password);
       emit(AuthSuccess(user));
-    } catch (e) {
-      emit(AuthFailure(e.toString()));
+    } catch (_) {
+      emit(
+        AuthFailure(
+          'No se pudo iniciar sesión. Verifica tus credenciales e inténtalo de nuevo.',
+        ),
+      );
     }
   }
 
@@ -92,11 +101,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      // Por ahora usar login como registro
-      final user = await loginUseCase.execute(event.email, 'password');
+      final user = await authRepository.register(
+        event.name,
+        event.email,
+        event.password,
+      );
       emit(AuthSuccess(user));
-    } catch (e) {
-      emit(AuthFailure(e.toString()));
+    } catch (_) {
+      emit(
+        AuthFailure(
+          'No se pudo completar el registro. Inténtalo de nuevo.',
+        ),
+      );
     }
   }
 
@@ -104,6 +120,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    await authRepository.logout();
     emit(AuthInitial());
   }
 
@@ -111,7 +128,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     CheckAuthStatus event,
     Emitter<AuthState> emit,
   ) async {
-    // Por ahora mantener en estado inicial
-    emit(AuthInitial());
+    emit(AuthLoading());
+    try {
+      final loggedIn = await authRepository.isLoggedIn();
+      if (!loggedIn) {
+        emit(AuthInitial());
+        return;
+      }
+
+      final user = await authRepository.getCurrentUser();
+      if (user != null) {
+        emit(AuthSuccess(user));
+      } else {
+        emit(AuthInitial());
+      }
+    } catch (_) {
+      emit(AuthInitial());
+    }
   }
 }
+

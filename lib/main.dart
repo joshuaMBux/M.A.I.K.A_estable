@@ -21,7 +21,9 @@ class MaikaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(create: (context) => di.sl<AuthBloc>()),
+        BlocProvider<AuthBloc>(
+          create: (context) => di.sl<AuthBloc>()..add(CheckAuthStatus()),
+        ),
         BlocProvider<ChatBloc>(create: (context) => di.sl<ChatBloc>()),
         BlocProvider<ThemeCubit>(create: (context) => di.sl<ThemeCubit>()),
       ],

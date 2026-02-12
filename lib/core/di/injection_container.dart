@@ -83,7 +83,12 @@ Future<void> init() async {
   ));
 
   // BLoCs
-  sl.registerFactory(() => AuthBloc(loginUseCase: sl()));
+  sl.registerFactory(
+    () => AuthBloc(
+      loginUseCase: sl(),
+      authRepository: sl<AuthRepository>(),
+    ),
+  );
   sl.registerFactory(
     () => ChatBloc(
       loadChatSessionUseCase: sl(),
