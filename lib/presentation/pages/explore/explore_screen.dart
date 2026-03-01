@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../core/di/injection_container.dart' as di;
+import '../../../data/repositories/favorito_repository.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -11,6 +15,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final _searchController = TextEditingController();
   String _selectedCategory = 'Todas';
   String _searchQuery = '';
+  final Set<String> _favoriteReferences = <String>{};
 
   final List<String> _categories = [
     'Todas',
@@ -395,9 +400,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             : ListView.builder(
                               itemCount: _filteredVerses.length,
                               itemBuilder: (context, index) {
+                                final verse = _filteredVerses[index];
+                                final isFavorite =
+                                    _favoriteReferences.contains(
+                                      verse['reference'],
+                                    );
                                 return _buildVerseCard(
                                   context,
-                                  _filteredVerses[index],
+                                  verse,
+                                  isFavorite,
                                 );
                               },
                             ),
@@ -411,7 +422,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildVerseCard(BuildContext context, Map<String, String> verse) {
+  Widget _buildVerseCard(
+    BuildContext context,
+    Map<String, String> verse,
+    bool isFavorite,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -466,10 +481,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   borderRadius: BorderRadius.circular(17.5),
                 ),
                 child: IconButton(
-                  onPressed: () {},
+                  onPressed: () => _onFavoritePressed(verse),
                   icon: Icon(
-                    Icons.favorite_border,
-                    color: Colors.white.withValues(alpha: 0.7),
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color:
+                        isFavorite
+                            ? const Color(0xFFEC4899)
+                            : Colors.white.withValues(alpha: 0.7),
                     size: 18,
                   ),
                   padding: EdgeInsets.zero,
@@ -499,5 +517,68 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _onFavoritePressed(Map<String, String> verse) async {
+    final reference = verse['reference'];
+    final text = verse['text'];
+    if (reference == null || text == null) return;
+
+    if (!di.sl.isRegistered<FavoritoRepository>()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Favoritos solo estan disponibles en la app instalada (Android/desktop).',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final match = RegExp(r'^(.+)\s+(\d+):(\d+)').firstMatch(reference);
+    if (match == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo interpretar la referencia "$reference".'),
+        ),
+      );
+      return;
+    }
+
+    final bookName = match.group(1)!.trim();
+    final chapter = int.parse(match.group(2)!);
+    final verseNumber = int.parse(match.group(3)!);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 1;
+
+      final repo = di.sl<FavoritoRepository>();
+      await repo.toggleFavoritoByReference(
+        idUsuario: userId,
+        libroNombre: bookName,
+        capitulo: chapter,
+        versiculo: verseNumber,
+        texto: text,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        if (_favoriteReferences.contains(reference)) {
+          _favoriteReferences.remove(reference);
+        } else {
+          _favoriteReferences.add(reference);
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo actualizar favoritos. $error'),
+        ),
+      );
+    }
   }
 }

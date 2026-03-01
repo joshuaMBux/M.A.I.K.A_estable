@@ -12,6 +12,7 @@ abstract class ChatLocalDataSource {
   Future<void> insertMessages(List<ChatMessageModel> messages);
   Future<List<ChatMessageModel>> getMessages(String conversationId);
   Future<List<ChatMessageModel>> getPendingMessages(String conversationId);
+  Future<List<ChatMessageModel>> getFavoriteMessages({String? conversationId});
   Future<void> updateMessageStatus(
     String messageId,
     MessageDeliveryStatus status,
@@ -122,6 +123,30 @@ class SqliteChatLocalDataSource implements ChatLocalDataSource {
         MessageDeliveryStatus.pending.name,
         MessageDeliveryStatus.error.name,
       ],
+    );
+    return rows.map(ChatMessageModel.fromDb).toList();
+  }
+
+  @override
+  Future<List<ChatMessageModel>> getFavoriteMessages({
+    String? conversationId,
+  }) async {
+    final db = await _db;
+    final hasConversationFilter =
+        conversationId != null && conversationId.isNotEmpty;
+    final whereClause =
+        hasConversationFilter ? 'WHERE m.conversation_id = ?' : '';
+    final whereArgs = hasConversationFilter ? [conversationId] : <Object>[];
+
+    final rows = await db.rawQuery(
+      '''
+      SELECT m.*, f.id AS favorite_id, f.note AS favorite_note
+      FROM favorites f
+      JOIN messages m ON m.id = f.message_id
+      $whereClause
+      ORDER BY f.created_at DESC
+      ''',
+      whereArgs,
     );
     return rows.map(ChatMessageModel.fromDb).toList();
   }
@@ -239,6 +264,23 @@ class InMemoryChatLocalDataSource implements ChatLocalDataSource {
               message.status == MessageDeliveryStatus.error,
         )
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<ChatMessageModel>> getFavoriteMessages({
+    String? conversationId,
+  }) async {
+    final Iterable<ChatMessageModel> allMessages =
+        _messagesByConversation.values.expand((messages) => messages);
+    final filtered = allMessages.where((message) {
+      final matchesConversation =
+          conversationId == null ||
+          conversationId.isEmpty ||
+          message.conversationId == conversationId;
+      return matchesConversation && message.isFavorite;
+    }).toList(growable: false);
+    filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return filtered;
   }
 
   @override

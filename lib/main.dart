@@ -5,6 +5,7 @@ import 'core/di/injection_container.dart' as di;
 import 'core/theme/app_theme.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/chat/chat_bloc.dart';
+import 'presentation/blocs/favorites/favorites_bloc.dart';
 import 'presentation/blocs/theme/theme_cubit.dart';
 import 'presentation/pages/auth/auth_screen.dart';
 
@@ -25,6 +26,9 @@ class MaikaApp extends StatelessWidget {
           create: (context) => di.sl<AuthBloc>()..add(CheckAuthStatus()),
         ),
         BlocProvider<ChatBloc>(create: (context) => di.sl<ChatBloc>()),
+        BlocProvider<FavoritesBloc>(
+          create: (context) => di.sl<FavoritesBloc>(),
+        ),
         BlocProvider<ThemeCubit>(create: (context) => di.sl<ThemeCubit>()),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(

@@ -18,7 +18,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'maika_database.db');
     return await openDatabase(
       path,
-      version: 6, // Increment version for audio schema updates (download_status, file_size_bytes, checksum_hash)
+      version: 7, // v7: índices y restricción UNIQUE para versiculo
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -61,6 +61,10 @@ class DatabaseHelper {
       await db.execute('''
         ALTER TABLE audio_capitulo ADD COLUMN checksum_hash TEXT
       ''');
+    }
+
+    if (oldVersion < 7) {
+      await _ensureVersiculoIndexes(db);
     }
   }
 
@@ -108,14 +112,12 @@ class DatabaseHelper {
         versiculo INTEGER NOT NULL,
         texto TEXT NOT NULL,
         version TEXT DEFAULT 'RVR1960',
+        UNIQUE (id_libro, capitulo, versiculo),
         FOREIGN KEY (id_libro) REFERENCES libro(id_libro)
       )
     ''');
 
-    // Index for versiculo
-    await db.execute(
-      'CREATE INDEX idx_versiculo_ref ON versiculo(id_libro, capitulo, versiculo)',
-    );
+    await _ensureVersiculoIndexes(db);
 
     // Tabla Categoria
     await db.execute('''
@@ -1009,5 +1011,25 @@ class DatabaseHelper {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_favorites_message ON favorites(message_id)',
     );
+  }
+
+  Future<void> _ensureVersiculoIndexes(Database db) async {
+    // Índice único para garantizar que no haya duplicados de versículo
+    await db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_versiculo_unique
+      ON versiculo(id_libro, capitulo, versiculo)
+    ''');
+
+    // Índice compuesto optimizado para lecturas por capítulo
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_versiculo_capitulo
+      ON versiculo(id_libro, capitulo)
+    ''');
+
+    // Índice para búsquedas por texto
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_versiculo_texto
+      ON versiculo(texto)
+    ''');
   }
 }

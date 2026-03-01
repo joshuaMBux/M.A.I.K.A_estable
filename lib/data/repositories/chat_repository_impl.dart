@@ -201,6 +201,15 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<List<ChatMessage>> getFavoriteMessages({
+    String? conversationId,
+  }) {
+    return _localDataSource.getFavoriteMessages(
+      conversationId: conversationId,
+    );
+  }
+
+  @override
   Stream<bool> watchConnection() {
     scheduleMicrotask(() async {
       final healthy = await _apiClient.testRasaConnection();

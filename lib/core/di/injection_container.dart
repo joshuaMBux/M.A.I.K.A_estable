@@ -22,6 +22,7 @@ import '../../domain/usecases/auth/login_usecase.dart';
 import '../../domain/usecases/chat/load_chat_session_usecase.dart';
 import '../../domain/usecases/chat/send_message_usecase.dart';
 import '../../domain/usecases/chat/sync_pending_messages_usecase.dart';
+import '../../domain/usecases/chat/get_favorite_messages_usecase.dart';
 import '../../domain/usecases/chat/toggle_favorite_message_usecase.dart';
 import '../../domain/usecases/reading_plan/get_default_reading_plan_id_usecase.dart';
 import '../../domain/usecases/reading_plan/get_reading_plan_detail_usecase.dart';
@@ -35,6 +36,7 @@ import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/blocs/chat/chat_bloc.dart';
 import '../../presentation/blocs/reading_plan/reading_plan_bloc.dart';
 import '../../presentation/blocs/devotional/devotional_bloc.dart';
+import '../../presentation/blocs/favorites/favorites_bloc.dart';
 import '../../presentation/blocs/theme/theme_cubit.dart';
 import '../../presentation/blocs/audio_bible/audio_bible_bloc.dart';
 import '../../core/services/audio_sync_service.dart';
@@ -112,6 +114,12 @@ Future<void> init() async {
       getDevotionalByIdUseCase: sl(),
     ),
   );
+  sl.registerFactory(
+    () => FavoritesBloc(
+      getFavoriteMessagesUseCase: sl(),
+      toggleFavoriteMessageUseCase: sl(),
+    ),
+  );
   sl.registerLazySingleton(() => ThemeCubit());
 
   // Use cases
@@ -119,6 +127,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => LoadChatSessionUseCase(sl()));
   sl.registerLazySingleton(() => SendChatMessageUseCase(sl()));
   sl.registerLazySingleton(() => SyncPendingMessagesUseCase(sl()));
+  sl.registerLazySingleton(() => GetFavoriteMessagesUseCase(sl()));
   sl.registerLazySingleton(() => ToggleFavoriteMessageUseCase(sl()));
 
   // Repository
@@ -129,7 +138,11 @@ Future<void> init() async {
       apiClient: sl<ApiClient>(),
     ),
   );
-  sl.registerLazySingleton<VerseRepository>(() => VerseRepositoryImpl());
+  sl.registerLazySingleton<VerseRepository>(
+    () => VerseRepositoryImpl(
+      versiculoRepository: !kIsWeb ? sl<VersiculoRepository>() : null,
+    ),
+  );
   sl.registerLazySingleton<ReadingPlanRepository>(
     () => ReadingPlanRepositoryImpl(),
   );

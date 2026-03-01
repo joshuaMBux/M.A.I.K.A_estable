@@ -27,10 +27,13 @@ CREATE TABLE versiculo (
     versiculo INTEGER NOT NULL,
     texto TEXT NOT NULL,
     version TEXT DEFAULT 'RVR1960',
+    UNIQUE (id_libro, capitulo, versiculo),
     FOREIGN KEY (id_libro) REFERENCES libro(id_libro)
 );
 
-CREATE INDEX idx_versiculo_ref ON versiculo(id_libro, capitulo, versiculo);
+CREATE UNIQUE INDEX idx_versiculo_unique ON versiculo(id_libro, capitulo, versiculo);
+CREATE INDEX idx_versiculo_capitulo ON versiculo(id_libro, capitulo);
+CREATE INDEX idx_versiculo_texto ON versiculo(texto);
 
 CREATE TABLE categoria (
     id_categoria INTEGER PRIMARY KEY AUTOINCREMENT,

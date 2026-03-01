@@ -19,6 +19,8 @@ abstract class ChatRepository {
     String? note,
   });
 
+  Future<List<ChatMessage>> getFavoriteMessages({String? conversationId});
+
   Stream<bool> watchConnection();
 
   List<ChatActionChip> defaultSuggestions();
