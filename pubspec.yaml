@@ -61,6 +61,11 @@ dependencies:
   file_selector: ^1.0.3
   file_saver: ^0.2.12
 
+  # Mini-games (Flame engine)
+  flame: ^1.17.0
+  flame_tiled: ^1.18.0
+  flame_audio: ^2.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -87,6 +92,11 @@ flutter:
   assets:
     - assets/audio/
     - maika.png
+    - assets/images/
+    - assets/tiles/
+    - assets/games/fragmentada/images/
+    - assets/games/fragmentada/tiles/
+    - assets/games/fragmentada/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

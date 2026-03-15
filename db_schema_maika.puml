@@ -1,0 +1,235 @@
+@startuml MaikaDB
+
+hide circle
+skinparam linetype ortho
+
+' =====================
+' TABLAS PRINCIPALES
+' =====================
+
+entity usuario {
+  * id_usuario : INTEGER <<PK>>
+  --
+  nombre : TEXT
+  email : TEXT
+  pwd : TEXT
+  rol : TEXT
+  fecha_nacimiento : DATE
+}
+
+entity libro {
+  * id_libro : INTEGER <<PK>>
+  --
+  nombre : TEXT
+  abreviatura : TEXT
+  orden : INTEGER
+}
+
+entity versiculo {
+  * id_versiculo : INTEGER <<PK>>
+  --
+  id_libro : INTEGER <<FK>>
+  capitulo : INTEGER
+  versiculo : INTEGER
+  texto : TEXT
+  version : TEXT
+}
+
+entity categoria {
+  * id_categoria : INTEGER <<PK>>
+  --
+  nombre : TEXT
+}
+
+entity versiculo_categoria {
+  * id_versiculo : INTEGER <<PK,FK>>
+  * id_categoria : INTEGER <<PK,FK>>
+}
+
+entity favorito {
+  * id_favorito : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  id_versiculo : INTEGER <<FK>>
+  creado_en : TIMESTAMP
+}
+
+entity historial_conversacion {
+  * id_historial : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  texto_usuario : TEXT
+  texto_bot : TEXT
+  intent : TEXT
+  entities_json : TEXT
+  confidence : REAL
+  fecha : TIMESTAMP
+}
+
+entity pregunta_frecuente {
+  * id_pregunta : INTEGER <<PK>>
+  --
+  pregunta : TEXT
+  respuesta : TEXT
+  categoria : TEXT
+}
+
+' =====================
+' TABLAS DE APRENDIZAJE Y GAMIFICACIÓN
+' =====================
+
+entity plan_lectura {
+  * id_plan : INTEGER <<PK>>
+  --
+  nombre : TEXT
+  descripcion : TEXT
+  dias : INTEGER
+}
+
+entity plan_item {
+  * id_item : INTEGER <<PK>>
+  --
+  id_plan : INTEGER <<FK>>
+  dia : INTEGER
+  id_libro : INTEGER
+  capitulo_inicio : INTEGER
+  versiculo_inicio : INTEGER
+  capitulo_fin : INTEGER
+  versiculo_fin : INTEGER
+  comentario : TEXT
+}
+
+entity plan_progreso_usuario {
+  * id_progreso : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  id_plan : INTEGER <<FK>>
+  dia : INTEGER
+  completado : BOOLEAN
+  completado_en : TIMESTAMP
+}
+
+entity devocional {
+  * id_devocional : INTEGER <<PK>>
+  --
+  titulo : TEXT
+  cuerpo : TEXT
+  fecha : DATE
+  autor : TEXT
+  id_versiculo : INTEGER <<FK>>
+}
+
+entity audio_capitulo {
+  * id_audio : INTEGER <<PK>>
+  --
+  id_libro : INTEGER <<FK>>
+  capitulo : INTEGER
+  url : TEXT
+  duracion_segundos : INTEGER
+  local_path : TEXT
+}
+
+entity actividad_usuario {
+  * id_actividad : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  fecha : DATE
+  tipo : TEXT
+  valor : INTEGER
+}
+
+entity racha_usuario {
+  * id_usuario : INTEGER <<PK,FK>>
+  --
+  racha_actual : INTEGER
+  ultima_fecha : DATE
+}
+
+entity nota {
+  * id_nota : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  id_versiculo : INTEGER <<FK>>
+  texto : TEXT
+  creada_en : TIMESTAMP
+}
+
+entity versiculo_del_dia {
+  * fecha : DATE <<PK>>
+  --
+  id_versiculo : INTEGER <<FK>>
+  fuente : TEXT
+  tema : TEXT
+}
+
+' =====================
+' TABLAS DE QUIZ / TEST
+' =====================
+
+entity quiz {
+  * id_quiz : INTEGER <<PK>>
+  --
+  titulo : TEXT
+  tema : TEXT
+}
+
+entity pregunta_quiz {
+  * id_pregunta : INTEGER <<PK>>
+  --
+  id_quiz : INTEGER <<FK>>
+  texto : TEXT
+}
+
+entity opcion_quiz {
+  * id_opcion : INTEGER <<PK>>
+  --
+  id_pregunta : INTEGER <<FK>>
+  texto : TEXT
+  correcta : BOOLEAN
+}
+
+entity resultado_quiz {
+  * id_resultado : INTEGER <<PK>>
+  --
+  id_usuario : INTEGER <<FK>>
+  id_quiz : INTEGER <<FK>>
+  puntaje : INTEGER
+  fecha : TIMESTAMP
+}
+
+' =====================
+' RELACIONES
+' =====================
+
+libro ||--o{ versiculo : "1:N"
+versiculo ||--o{ versiculo_categoria : "1:N"
+categoria ||--o{ versiculo_categoria : "1:N"
+
+usuario ||--o{ favorito : "1:N"
+versiculo ||--o{ favorito : "1:N"
+
+usuario ||--o{ historial_conversacion : "1:N"
+
+plan_lectura ||--o{ plan_item : "1:N"
+plan_lectura ||--o{ plan_progreso_usuario : "1:N"
+usuario ||--o{ plan_progreso_usuario : "1:N"
+
+versiculo ||--o{ devocional : "1:N"
+libro ||--o{ audio_capitulo : "1:N"
+
+usuario ||--o{ actividad_usuario : "1:N"
+usuario ||--|| racha_usuario : "1:1"
+
+usuario ||--o{ nota : "1:N"
+versiculo ||--o{ nota : "1:N"
+
+versiculo ||--o{ versiculo_del_dia : "1:N"
+
+quiz ||--o{ pregunta_quiz : "1:N"
+pregunta_quiz ||--o{ opcion_quiz : "1:N"
+
+usuario ||--o{ resultado_quiz : "1:N"
+quiz ||--o{ resultado_quiz : "1:N"
+
+@enduml
+

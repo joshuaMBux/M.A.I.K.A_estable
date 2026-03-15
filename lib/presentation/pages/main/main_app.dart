@@ -3,6 +3,7 @@ import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../chat/chat_screen.dart';
 import '../favorites/favorites_screen.dart';
+import '../games/games_screen.dart';
 import '../profile/profile_screen.dart';
 //import '../testing/rasa_test_screen.dart';
 
@@ -21,6 +22,7 @@ class _MainAppState extends State<MainApp> {
     const ExploreScreen(),
     const ChatScreen(), // Chat con interfaz de avatar
     const FavoritesScreen(),
+    const GamesScreen(),
     const ProfileScreen(),
     //
   ];
@@ -85,7 +87,8 @@ class _MainAppState extends State<MainApp> {
               _buildNavItem(Icons.explore, 'Explorar', 1),
               _buildNavItem(Icons.chat, 'Chat', 2),
               _buildNavItem(Icons.favorite, 'Favoritos', 3),
-              _buildNavItem(Icons.person, 'Perfil', 4),
+              _buildNavItem(Icons.sports_esports, 'Minijuegos', 4),
+              _buildNavItem(Icons.person, 'Perfil', 5),
             ],
           ),
         ),

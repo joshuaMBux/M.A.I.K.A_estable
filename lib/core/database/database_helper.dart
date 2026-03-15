@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
+    _database = await _initDatabaseV2();
     return _database!;
   }
 
@@ -66,6 +66,20 @@ class DatabaseHelper {
     if (oldVersion < 7) {
       await _ensureVersiculoIndexes(db);
     }
+
+    if (oldVersion < 8) {
+      await _createGameActivityTable(db);
+    }
+  }
+
+  Future<Database> _initDatabaseV2() async {
+    String path = join(await getDatabasesPath(), 'maika_database.db');
+    return await openDatabase(
+      path,
+      version: 8, // v8: tabla game_activity para analytics de minijuegos
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<void> _dropOldTables(Database db) async {
@@ -334,6 +348,9 @@ class DatabaseHelper {
         FOREIGN KEY (id_quiz) REFERENCES quiz(id_quiz)
       )
     ''');
+
+    // Tabla de actividad de minijuegos (analytics ligera)
+    await _createGameActivityTable(db);
 
     await _createChatTables(db);
   }
@@ -964,6 +981,20 @@ class DatabaseHelper {
     }
   }
 
+  Future<void> _createGameActivityTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS game_activity (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        game TEXT NOT NULL,
+        completed INTEGER,
+        seconds_played INTEGER,
+        fragments_collected INTEGER,
+        created_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
   Future<void> _createChatTables(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS conversations (
@@ -1031,5 +1062,31 @@ class DatabaseHelper {
       CREATE INDEX IF NOT EXISTS idx_versiculo_texto
       ON versiculo(texto)
     ''');
+  }
+
+  Future<void> insertGameActivity({
+    required String eventName,
+    required String game,
+    int? completed,
+    int? secondsPlayed,
+    int? fragmentsCollected,
+  }) async {
+    final db = await database;
+    await db.insert('game_activity', {
+      'event_name': eventName,
+      'game': game,
+      'completed': completed,
+      'seconds_played': secondsPlayed,
+      'fragments_collected': fragmentsCollected,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getGameActivity() async {
+    final db = await database;
+    return db.query(
+      'game_activity',
+      orderBy: 'created_at DESC',
+    );
   }
 }
