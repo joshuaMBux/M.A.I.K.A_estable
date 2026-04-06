@@ -122,13 +122,19 @@ class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
     final db = await _dbHelper!.database;
 
     if (completed) {
-      await db.insert('plan_progreso_usuario', {
-        'id_usuario': resolvedUserId,
-        'id_plan': planId,
-        'dia': day,
-        'completado': 1,
-        'completado_en': DateTime.now().toIso8601String(),
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+        'plan_progreso_usuario',
+        {
+          'id_usuario': resolvedUserId,
+          'id_plan': planId,
+          'dia': day,
+          'completado': 1,
+          'completado_en': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      await _registerReadingActivity(db, resolvedUserId);
     } else {
       await db.delete(
         'plan_progreso_usuario',
@@ -136,6 +142,79 @@ class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
         whereArgs: [resolvedUserId, planId, day],
       );
     }
+  }
+
+  Future<void> _registerReadingActivity(Database db, int userId) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+
+    final existing = await db.query(
+      'actividad_usuario',
+      where: 'id_usuario = ? AND fecha = ? AND tipo = ?',
+      whereArgs: [userId, today, 'plan_lectura'],
+      limit: 1,
+    );
+
+    if (existing.isEmpty) {
+      await db.insert('actividad_usuario', {
+        'id_usuario': userId,
+        'fecha': today,
+        'tipo': 'plan_lectura',
+        'valor': 1,
+      });
+    }
+
+    await _updateUserStreak(db, userId, today);
+  }
+
+  Future<void> _updateUserStreak(
+    Database db,
+    int userId,
+    String todayDateString,
+  ) async {
+    final today = DateTime.parse(todayDateString);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final rows = await db.query(
+      'racha_usuario',
+      where: 'id_usuario = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+
+    int newStreak;
+    if (rows.isEmpty || rows.first['ultima_fecha'] == null) {
+      newStreak = 1;
+    } else {
+      final lastDateValue = rows.first['ultima_fecha'];
+      final lastDate = lastDateValue is String
+          ? DateTime.parse(lastDateValue)
+          : today;
+      final currentStreak = rows.first['racha_actual'] is int
+          ? rows.first['racha_actual'] as int
+          : 0;
+
+      if (_isSameDate(lastDate, today)) {
+        newStreak = currentStreak;
+      } else if (_isSameDate(lastDate, yesterday)) {
+        newStreak = currentStreak + 1;
+      } else {
+        newStreak = 1;
+      }
+    }
+
+    await db.insert(
+      'racha_usuario',
+      {
+        'id_usuario': userId,
+        'racha_actual': newStreak,
+        'ultima_fecha': todayDateString,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   Future<int> _resolveUserId(int? userId) async {

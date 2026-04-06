@@ -12,6 +12,7 @@ import '../../data/repositories/reading_plan_repository_impl.dart';
 import '../../data/repositories/devotional_repository_impl.dart';
 import '../../data/repositories/note_repository_impl.dart';
 import '../../data/repositories/favorito_repository.dart';
+import '../../data/repositories/user_activity_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/verse_repository.dart';
@@ -43,6 +44,13 @@ import '../../core/services/audio_sync_service.dart';
 import '../../core/services/audio_download_service.dart';
 import '../../core/services/audio_player_manager.dart';
 import '../../data/repositories/audio_bible_repository.dart';
+import '../../data/datasources/user_settings_local_data_source.dart';
+import '../../data/repositories/user_settings_repository_impl.dart';
+import '../../domain/repositories/user_settings_repository.dart';
+import '../../domain/usecases/settings/get_user_settings_usecase.dart';
+import '../../domain/usecases/settings/update_user_settings_usecase.dart';
+import '../../presentation/blocs/settings/settings_cubit.dart';
+import '../services/notification_service.dart';
 
 final sl = GetIt.instance;
 
@@ -121,6 +129,30 @@ Future<void> init() async {
     ),
   );
   sl.registerLazySingleton(() => ThemeCubit());
+  // Settings / perfil
+  sl.registerLazySingleton<UserSettingsLocalDataSource>(
+    () => UserSettingsLocalDataSource(),
+  );
+  sl.registerLazySingleton<UserSettingsRepository>(
+    () => UserSettingsRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton(
+    () => GetUserSettingsUseCase(sl<UserSettingsRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => UpdateUserSettingsUseCase(sl<UserSettingsRepository>()),
+  );
+  sl.registerLazySingleton<NotificationService>(
+    () => LocalNotificationService(),
+  );
+  sl.registerLazySingleton(
+    () => SettingsCubit(
+      sl<GetUserSettingsUseCase>(),
+      sl<UpdateUserSettingsUseCase>(),
+      sl<ThemeCubit>(),
+      sl<NotificationService>(),
+    ),
+  );
 
   // Use cases
   sl.registerLazySingleton(() => LoginUseCase(sl()));
@@ -158,6 +190,7 @@ Future<void> init() async {
     sl.registerLazySingleton(() => UsuarioRepository());
     sl.registerLazySingleton(() => VersiculoRepository());
     sl.registerLazySingleton(() => FavoritoRepository());
+    sl.registerLazySingleton(() => UserActivityRepository());
   }
 
   // Reading plan use cases

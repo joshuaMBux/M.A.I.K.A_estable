@@ -7,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/utils/time_formatter.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../blocs/chat/chat_bloc.dart';
+import 'avatar_chat_screen.dart';
+import '../../widgets/profile_avatar.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -138,31 +140,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 250),
-                              switchInCurve: Curves.easeOut,
-                              switchOutCurve: Curves.easeIn,
-                              child:
-                                  state.suggestions.isEmpty
-                                      ? const SizedBox(height: 8)
-                                      : Padding(
-                                        key: const ValueKey('suggestion_chips'),
-                                        padding: const EdgeInsets.fromLTRB(
-                                          20,
-                                          0,
-                                          20,
-                                          24,
-                                        ),
-                                        child: _SuggestionChips(
-                                          suggestions: state.suggestions,
-                                          onPressed: (chip) {
-                                            bloc.add(
-                                              ChatSuggestionPressed(chip),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                            ),
+                            const SizedBox(height: 4),
                           ],
                         ),
                         if (state.status == ChatViewStatus.loading)
@@ -614,8 +592,8 @@ class _InputBarState extends State<_InputBar> {
             ? 'Escribe tu mensaje...'
             : 'Modo offline, envia para reintentar';
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: _ChatPalette.background,
         boxShadow: [
@@ -629,11 +607,11 @@ class _InputBarState extends State<_InputBar> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!widget.isOnline)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 14),
+            if (!widget.isOnline)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
                 color: _ChatPalette.warning.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
@@ -660,26 +638,13 @@ class _InputBarState extends State<_InputBar> {
                 ],
               ),
             ),
-          Row(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: _ChatPalette.surface,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(14),
-                child: const Icon(Icons.mic_none, color: Colors.white70),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 4,
+              Row(
+                children: [
+                  Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
                   ),
                   decoration: BoxDecoration(
                     color: _ChatPalette.surface,
@@ -712,13 +677,13 @@ class _InputBarState extends State<_InputBar> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
               GestureDetector(
                 onTap: (_isComposing && !isSending) ? widget.onSend : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  height: 56,
-                  width: 56,
+                  height: 48,
+                  width: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient:
@@ -947,54 +912,58 @@ class _ChatBubble extends StatelessWidget {
     Widget content = Column(
       crossAxisAlignment:
           isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        if (message.contentType == MessageContentType.list)
-          _ListMessageContent(message: message, textColor: textColor)
-        else if (message.contentType == MessageContentType.image)
-          _ImageMessageContent(message: message, textColor: textColor)
-        else
-          Text(
-            message.text,
-            style: TextStyle(color: textColor, fontSize: 15, height: 1.5),
-          ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (message.generated && !isUser)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.auto_awesome,
-                    color: _ChatPalette.accent,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'generado',
-                    style: TextStyle(
-                      color: _ChatPalette.accent.withValues(alpha: 0.9),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
+        children: [
+          if (message.contentType == MessageContentType.list)
+            _ListMessageContent(message: message, textColor: textColor)
+          else if (message.contentType == MessageContentType.image)
+            _ImageMessageContent(message: message, textColor: textColor)
+          else
             Text(
-              formatRelativeTime(message.timestamp),
-              style: TextStyle(
-                color: Colors.white70.withValues(alpha: 0.8),
-                fontSize: 11,
-              ),
+              message.text,
+              style: TextStyle(color: textColor, fontSize: 15, height: 1.5),
             ),
-            if (statusIcon != null) ...[
-              const SizedBox(width: 8),
-              Icon(statusIcon, color: statusColor, size: 14),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              if (message.generated && !isUser)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome,
+                      color: _ChatPalette.accent,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'generado',
+                      style: TextStyle(
+                        color: _ChatPalette.accent.withValues(alpha: 0.9),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              Flexible(
+                child: Text(
+                  formatRelativeTime(message.timestamp),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white70.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              if (statusIcon != null) ...[
+                const SizedBox(width: 8),
+                Icon(statusIcon, color: statusColor, size: 14),
+              ],
             ],
-          ],
-        ),
+          ),
       ],
     );
 
@@ -1040,7 +1009,6 @@ class _ChatBubble extends StatelessWidget {
     }
 
     return Row(
-      mainAxisAlignment: alignment,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!isUser)
@@ -1055,45 +1023,50 @@ class _ChatBubble extends StatelessWidget {
                     )
                     : const SizedBox(width: 48),
           ),
-        Flexible(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isUser ? 20 : 6),
-                  bottomRight: Radius.circular(isUser ? 6 : 20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: alignment,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bubbleColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(20),
+                        topRight: const Radius.circular(20),
+                        bottomLeft: Radius.circular(isUser ? 20 : 6),
+                        bottomRight: Radius.circular(isUser ? 6 : 20),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: content,
                   ),
-                ],
+                ),
               ),
-              child: content,
-            ),
+              const SizedBox(width: 8),
+              if (isUser)
+                const ProfileAvatar(radius: 18)
+              else
+                _MessageActions(
+                  message: message,
+                  onFavorite: onFavorite,
+                ),
+            ],
           ),
         ),
-        if (isUser)
-          Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: _ChatPalette.accent.withValues(alpha: 0.2),
-              child: const Icon(Icons.person, color: Colors.white),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: _MessageActions(message: message, onFavorite: onFavorite),
-          ),
       ],
     );
   }
@@ -1134,78 +1107,110 @@ class _ChatHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: _ChatPalette.background,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Row(
         children: [
-          const MaikaAvatar(size: 54),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Maika (BETA)',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Tu asistente biblico',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        letterSpacing: 0.2,
+          const MaikaAvatar(size: 48),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Maika (BETA)',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color:
-                          isConnected
-                              ? _ChatPalette.success
-                              : _ChatPalette.warning,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              isConnected
-                                  ? _ChatPalette.success.withValues(alpha: 0.6)
-                                  : _ChatPalette.warning.withValues(alpha: 0.6),
-                          blurRadius: 8,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                      ],
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Tu asistente biblico',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    isConnected ? 'Conectado a Rasa' : 'Sin conexion',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color:
+                            isConnected
+                                ? _ChatPalette.success
+                                : _ChatPalette.warning,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                isConnected
+                                    ? _ChatPalette.success
+                                        .withValues(alpha: 0.6)
+                                    : _ChatPalette.warning
+                                        .withValues(alpha: 0.6),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isConnected ? 'Conectado a Rasa' : 'Sin conexion',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AvatarChatScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.face_retouching_natural,
+              color: Colors.white70,
+            ),
+            tooltip: 'Chat con avatar',
+          ),
           IconButton(
             onPressed:
                 () => context.read<ChatBloc>().add(

@@ -35,14 +35,14 @@ class Versiculo {
 
   factory Versiculo.fromMap(Map<String, dynamic> map) {
     return Versiculo(
-      idVersiculo: map['id_versiculo'],
-      idLibro: map['id_libro'],
-      capitulo: map['capitulo'],
-      versiculo: map['versiculo'],
-      texto: map['texto'],
-      version: map['version'] ?? 'RVR1960',
-      nombreLibro: map['nombre_libro'] ?? map['nombre_categoria'],
-      abreviaturaLibro: map['abreviatura_libro'],
+      idVersiculo: map['id_versiculo'] as int?,
+      idLibro: map['id_libro'] as int,
+      capitulo: map['capitulo'] as int,
+      versiculo: map['versiculo'] as int,
+      texto: map['texto'] as String,
+      version: map['version'] as String? ?? 'RVR1960',
+      nombreLibro: map['nombre_libro'] as String?,
+      abreviaturaLibro: map['abreviatura_libro'] as String?,
     );
   }
 }

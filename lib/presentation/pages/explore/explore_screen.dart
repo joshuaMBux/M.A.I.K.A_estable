@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/di/injection_container.dart' as di;
 import '../../../data/repositories/favorito_repository.dart';
+import '../../../domain/repositories/verse_repository.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -16,6 +17,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _selectedCategory = 'Todas';
   String _searchQuery = '';
   final Set<String> _favoriteReferences = <String>{};
+
+  bool _isLoadingChapter = false;
+  String? _chapterError;
+  final List<Map<String, String>> _chapterVerses = [];
 
   final List<String> _categories = [
     'Todas',
@@ -163,7 +168,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   // Filtrar versículos según categoría y búsqueda
   List<Map<String, String>> get _filteredVerses {
-    var verses = _allVerses;
+    var verses = <Map<String, String>>[..._allVerses, ..._chapterVerses,];
 
     // Filtrar por categoría
     if (_selectedCategory != 'Todas') {
@@ -269,6 +274,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _onLoadChapterPressed,
+                      icon: const Icon(
+                        Icons.menu_book,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'Cargar capitulo (API)',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  if (_isLoadingChapter)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: LinearProgressIndicator(minHeight: 2),
+                    ),
+                  if (!_isLoadingChapter && _chapterError != null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'No se pudo cargar el capitulo. Intenta de nuevo.',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
 
                   // Barra de búsqueda
                   Container(
@@ -517,6 +554,114 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _onLoadChapterPressed() async {
+    final bookController = TextEditingController();
+    final chapterController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cargar capitulo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: bookController,
+                decoration: const InputDecoration(
+                  labelText: 'Libro (ej. Juan)',
+                ),
+              ),
+              TextField(
+                controller: chapterController,
+                decoration: const InputDecoration(
+                  labelText: 'Capitulo (numero)',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cargar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    final book = bookController.text.trim();
+    final chapterText = chapterController.text.trim();
+    if (book.isEmpty || chapterText.isEmpty) {
+      return;
+    }
+
+    final chapter = int.tryParse(chapterText);
+    if (chapter == null || chapter <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Capitulo invalido.'),
+        ),
+      );
+      return;
+    }
+
+    await _loadChapterFromRepository(book, chapter);
+  }
+
+  Future<void> _loadChapterFromRepository(String book, int chapter) async {
+    setState(() {
+      _isLoadingChapter = true;
+      _chapterError = null;
+    });
+
+    try {
+      final repo = di.sl<VerseRepository>();
+      final verses = await repo.getChapter(book, chapter);
+
+      setState(() {
+        _chapterVerses
+          ..clear()
+          ..addAll(
+            verses.map(
+              (v) => <String, String>{
+                'text': v.text,
+                'reference': '${v.book} ${v.chapter}:${v.verse}',
+                'category': 'Capitulo',
+              },
+            ),
+          );
+        _isLoadingChapter = false;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Capitulo $book $chapter disponible (API/BD local).'),
+        ),
+      );
+    } catch (error) {
+      setState(() {
+        _isLoadingChapter = false;
+        _chapterError = error.toString();
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo cargar el capitulo. $error'),
+        ),
+      );
+    }
   }
 
   Future<void> _onFavoritePressed(Map<String, String> verse) async {

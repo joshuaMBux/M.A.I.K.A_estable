@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/di/injection_container.dart' as di;
@@ -11,15 +12,24 @@ import '../../../domain/repositories/verse_repository.dart';
 import '../../../domain/usecases/note/add_note_usecase.dart';
 import '../../../domain/usecases/note/get_notes_for_verse_usecase.dart';
 import '../../../data/repositories/favorito_repository.dart';
+import '../../../data/repositories/user_activity_repository.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../widgets/profile_avatar.dart';
 import '../audio_bible/audio_bible_screen.dart';
 import '../chat/chat_screen.dart';
 import '../devotional/devotional_screen.dart';
 import '../explore/explore_screen.dart';
 import '../favorites/favorites_screen.dart';
+import '../profile/profile_screen.dart';
 import '../reading_plan/reading_plan_screen.dart';
+import '../games/games_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onProfileTap});
+
+  /// Callback opcional para abrir la pantalla de perfil
+  /// (por ejemplo, cambiando el tab actual en MainApp).
+  final VoidCallback? onProfileTap;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -34,11 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _reflectionController = TextEditingController();
   int? _cachedUserId;
   List<Note> _recentNotes = const [];
+  int _streak = 0;
 
   @override
   void initState() {
     super.initState();
     _loadVerseOfTheDay();
+    _loadStreak();
   }
 
   @override
@@ -110,6 +122,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     _cachedUserId = prefs.getInt('user_id') ?? 1;
     return _cachedUserId!;
+  }
+
+  Future<void> _loadStreak() async {
+    if (kIsWeb || !di.sl.isRegistered<UserActivityRepository>()) {
+      return;
+    }
+    try {
+      final userId = await _readCurrentUserId();
+      final repo = di.sl<UserActivityRepository>();
+      final value = await repo.getCurrentStreak(userId);
+      if (!mounted) return;
+      setState(() {
+        _streak = value;
+      });
+    } catch (_) {
+      // Silenciar errores de racha para no afectar la carga principal.
+    }
   }
 
   Verse _copyVerse(Verse verse, {bool? favorite}) {
@@ -548,6 +577,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       cardBackground: cardBackground,
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
+                      streak: _streak,
+                      onProfileTap: widget.onProfileTap,
                     ),
                     const SizedBox(height: 20),
                     _MainActions(scheme: scheme, textPrimary: textPrimary),
@@ -583,16 +614,26 @@ class _Header extends StatelessWidget {
   final Color cardBackground;
   final Color textPrimary;
   final Color textSecondary;
+  final int streak;
+  final VoidCallback? onProfileTap;
 
   const _Header({
     required this.scheme,
     required this.cardBackground,
     required this.textPrimary,
     required this.textSecondary,
+    required this.streak,
+    this.onProfileTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    String displayName = 'Usuario';
+    if (authState is AuthSuccess && authState.user.name.isNotEmpty) {
+      displayName = authState.user.name;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -602,128 +643,63 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [scheme.primary, scheme.secondary],
-                  ),
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Center(
-                  child: Text(
-                    'M',
-                    style: TextStyle(
-                      color: scheme.onPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: onProfileTap ??
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileScreen(),
                     ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: scheme.tertiary,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: scheme.surface, width: 2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                },
+            child: Stack(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'Maika',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [scheme.primary, scheme.secondary],
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.secondary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'BETA',
-                        style: TextStyle(
-                          color: scheme.onSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                    borderRadius: BorderRadius.circular(26),
+                  ),
+                  child: const Center(
+                    child: ProfileAvatar(radius: 22),
+                  ),
                 ),
-                Text(
-                  'Tu asistente biblico personal',
-                  style: TextStyle(color: textSecondary, fontSize: 12),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: scheme.tertiary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: scheme.surface, width: 2),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: scheme.overlayOnSurface(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.local_fire_department,
-                      color: scheme.secondary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '7',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              displayName,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 35,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: scheme.overlayOnSurface(0.08),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(
-                  Icons.notifications_none,
-                  color: textSecondary,
-                  size: 18,
-                ),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _StreakFlame(
+            color: scheme.secondary,
+            textColor: textPrimary,
+            backgroundColor: scheme.overlayOnSurface(0.08),
+            streak: streak,
           ),
         ],
       ),
@@ -773,6 +749,96 @@ class _MainActions extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _StreakFlame extends StatefulWidget {
+  final Color color;
+  final Color textColor;
+  final Color backgroundColor;
+  final int streak;
+
+  const _StreakFlame({
+    required this.color,
+    required this.textColor,
+    required this.backgroundColor,
+    required this.streak,
+  });
+
+  @override
+  State<_StreakFlame> createState() => _StreakFlameState();
+}
+
+class _StreakFlameState extends State<_StreakFlame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _scale = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scale.value,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.backgroundColor,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.local_fire_department,
+                  color: widget.color,
+                  size: 18,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${widget.streak}',
+                  style: TextStyle(
+                    color: widget.textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -852,7 +918,7 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 100,
+      height: 140,
       child: GridView.count(
         crossAxisCount: 4,
         physics: const NeverScrollableScrollPhysics(),
@@ -897,6 +963,16 @@ class _QuickActions extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+            ),
+          ),
+          _QuickAction(
+            title: 'Minijuegos',
+            icon: Icons.sports_esports,
+            color: const Color(0xFF22C55E),
+            textPrimary: textPrimary,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const GamesScreen()),
             ),
           ),
         ],

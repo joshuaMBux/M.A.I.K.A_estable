@@ -115,6 +115,89 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     setState(() => _activeTab = tab);
   }
 
+  Future<bool> _confirmDelete(
+    BuildContext context, {
+    required String title,
+    required String message,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _removeVerseFavorite(
+    BuildContext context,
+    Versiculo verse,
+  ) async {
+    if (!di.sl.isRegistered<FavoritoRepository>()) return;
+    final idVersiculo = verse.idVersiculo;
+    if (idVersiculo == null) return;
+
+    final confirm = await _confirmDelete(
+      context,
+      title: 'Quitar de favoritos',
+      message: '¿Quieres eliminar este versículo de tus guardados?',
+    );
+    if (!confirm) return;
+
+    try {
+      final userId = await _readCurrentUserId();
+      final favoritoRepo = di.sl<FavoritoRepository>();
+      await favoritoRepo.removeFavorito(userId, idVersiculo);
+      if (!mounted) return;
+      setState(() {
+        _savedVerses = _savedVerses
+            .where((v) => v.idVersiculo != idVersiculo)
+            .toList();
+      });
+    } catch (_) {
+      // Podrías mostrar un snackbar de error si lo deseas.
+    }
+  }
+
+  Future<void> _removeChatFavorite(
+    BuildContext context,
+    ChatMessage message,
+  ) async {
+    final confirm = await _confirmDelete(
+      context,
+      title: 'Quitar mensaje guardado',
+      message: '¿Quieres eliminar este mensaje de tus guardados?',
+    );
+    if (!confirm) return;
+
+    try {
+      final repo = di.sl<ChatRepository>();
+      await repo.toggleFavorite(
+        messageId: message.id,
+        isFavorite: false,
+        note: message.favoriteNote,
+      );
+      if (!mounted) return;
+      setState(() {
+        _savedMessages =
+            _savedMessages.where((m) => m.id != message.id).toList();
+      });
+    } catch (_) {
+      // Podrías mostrar un snackbar de error si lo deseas.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -194,6 +277,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         return _VerseCard(
           text: verse.texto,
           reference: verse.referencia,
+          onDelete: () => _removeVerseFavorite(context, verse),
         );
       },
     );
@@ -237,6 +321,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           textPrimary: textPrimary,
           textSecondary: textSecondary,
           message: message,
+          onDelete: () => _removeChatFavorite(context, message),
         );
       },
     );
@@ -392,8 +477,13 @@ class _FavoritesHero extends StatelessWidget {
 class _VerseCard extends StatelessWidget {
   final String text;
   final String reference;
+  final VoidCallback? onDelete;
 
-  const _VerseCard({required this.text, required this.reference});
+  const _VerseCard({
+    required this.text,
+    required this.reference,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -441,10 +531,14 @@ class _VerseCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              const Icon(
-                Icons.favorite,
-                color: Color(0xFFEC4899),
-                size: 20,
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFEC4899),
+                  size: 20,
+                ),
+                onPressed: onDelete,
+                tooltip: 'Eliminar de favoritos',
               ),
             ],
           ),
@@ -484,7 +578,10 @@ class _ChatFavoriteCard extends StatelessWidget {
     required this.textPrimary,
     required this.textSecondary,
     required this.message,
+    this.onDelete,
   });
+
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -520,10 +617,14 @@ class _ChatFavoriteCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              const Icon(
-                Icons.favorite,
-                size: 18,
-                color: Color(0xFFEC4899),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Color(0xFFEC4899),
+                ),
+                onPressed: onDelete,
+                tooltip: 'Eliminar de favoritos',
               ),
             ],
           ),

@@ -16,16 +16,22 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const ExploreScreen(),
-    const ChatScreen(), // Chat con interfaz de avatar
-    const FavoritesScreen(),
-    const GamesScreen(),
-    const ProfileScreen(),
-    //
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(
+        onProfileTap: () => setState(() => _currentIndex = 5),
+      ),
+      const ExploreScreen(),
+      const ChatScreen(), // Chat con interfaz de avatar
+      const FavoritesScreen(),
+      const GamesScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +80,8 @@ class _MainAppState extends State<MainApp> {
             elevation: 0,
             selectedItemColor: const Color(0xFF6B46C1),
             unselectedItemColor: Colors.white.withValues(alpha: 0.6),
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
             selectedLabelStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,

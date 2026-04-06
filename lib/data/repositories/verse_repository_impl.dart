@@ -413,7 +413,46 @@ class VerseRepositoryImpl implements VerseRepository {
 
   @override
   Future<Verse?> getVerseOfTheDay() async {
-    // Por ahora se mantiene Juan 3:16 como versiculo del dia (mock).
+    // Intentar obtener el versículo del día desde SQLite (tabla versiculo_del_dia).
+    try {
+      final dbHelper = DatabaseHelper();
+      final db = await dbHelper.database;
+      final today = DateTime.now().toIso8601String().split('T')[0];
+
+      final rows = await db.rawQuery(
+        '''
+        SELECT
+          v.*,
+          l.nombre AS nombre_libro,
+          l.abreviatura AS abreviatura_libro
+        FROM versiculo_del_dia vd
+        JOIN versiculo v ON vd.id_versiculo = v.id_versiculo
+        LEFT JOIN libro l ON v.id_libro = l.id_libro
+        WHERE vd.fecha = ?
+        LIMIT 1
+        ''',
+        [today],
+      );
+
+      if (rows.isNotEmpty) {
+        final versiculo = Versiculo.fromMap(rows.first);
+        return Verse(
+          id: versiculo.idVersiculo?.toString() ??
+              '${versiculo.idLibro}_${versiculo.capitulo}_${versiculo.versiculo}',
+          book: versiculo.nombreLibro ?? '',
+          chapter: versiculo.capitulo,
+          verse: versiculo.versiculo,
+          text: versiculo.texto,
+          translation: versiculo.version,
+          tags: const [],
+          isFavorite: false,
+        );
+      }
+    } catch (_) {
+      // Ignorar errores y usar el fallback mock.
+    }
+
+    // Fallback: mantener Juan 3:16 como versículo por defecto si no hay dato en SQLite.
     return const VerseModel(
       id: '1',
       book: 'Juan',
