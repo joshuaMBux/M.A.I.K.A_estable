@@ -14,6 +14,7 @@ class DatabaseHelper {
     return _database!;
   }
 
+  // ignore: unused_element
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'maika_database.db');
     return await openDatabase(
@@ -70,13 +71,17 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       await _createGameActivityTable(db);
     }
+
+    if (oldVersion < 9) {
+      await _createGamificationTables(db);
+    }
   }
 
   Future<Database> _initDatabaseV2() async {
     String path = join(await getDatabasesPath(), 'maika_database.db');
     return await openDatabase(
       path,
-      version: 8, // v8: tabla game_activity para analytics de minijuegos
+      version: 9, // v9: gamificacion local con progreso, recompensas y logros
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -351,6 +356,9 @@ class DatabaseHelper {
 
     // Tabla de actividad de minijuegos (analytics ligera)
     await _createGameActivityTable(db);
+
+    // Tablas de gamificacion local
+    await _createGamificationTables(db);
 
     await _createChatTables(db);
   }
@@ -787,8 +795,7 @@ class DatabaseHelper {
       );
     }
 
-    final count =
-        Sqflite.firstIntValue(
+    final count = Sqflite.firstIntValue(
           await db.rawQuery(
             'SELECT COUNT(*) FROM plan_item WHERE id_plan = ?',
             [planId],
@@ -803,8 +810,7 @@ class DatabaseHelper {
   }
 
   Future<void> _ensureDevotionalsSeeded(Database db) async {
-    final count =
-        Sqflite.firstIntValue(
+    final count = Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM devocional'),
         ) ??
         0;
@@ -916,13 +922,16 @@ class DatabaseHelper {
 
     for (final seed in seeds) {
       final date = today.subtract(Duration(days: seed['daysAgo'] as int));
-      await db.insert('devocional', {
-        'titulo': seed['title'],
-        'cuerpo': seed['body'],
-        'fecha': date.toIso8601String().split('T').first,
-        'autor': seed['author'],
-        'id_versiculo': seed['verseId'],
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+          'devocional',
+          {
+            'titulo': seed['title'],
+            'cuerpo': seed['body'],
+            'fecha': date.toIso8601String().split('T').first,
+            'autor': seed['author'],
+            'id_versiculo': seed['verseId'],
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
   }
 
@@ -992,6 +1001,59 @@ class DatabaseHelper {
         fragments_collected INTEGER,
         created_at INTEGER NOT NULL
       )
+    ''');
+  }
+
+  Future<void> _createGamificationTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_progress (
+        user_id INTEGER PRIMARY KEY,
+        xp_total INTEGER NOT NULL DEFAULT 0,
+        level INTEGER NOT NULL DEFAULT 1,
+        coins INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER,
+        FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS reward_transaction (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        event_key TEXT NOT NULL UNIQUE,
+        action_type TEXT NOT NULL,
+        xp_delta INTEGER NOT NULL DEFAULT 0,
+        coins_delta INTEGER NOT NULL DEFAULT 0,
+        metadata_json TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_achievement (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        achievement_key TEXT NOT NULL,
+        unlocked_at INTEGER NOT NULL,
+        UNIQUE (user_id, achievement_key),
+        FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_reward_transaction_user
+      ON reward_transaction(user_id, created_at DESC)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_reward_transaction_action
+      ON reward_transaction(user_id, action_type)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_user_achievement_user
+      ON user_achievement(user_id, unlocked_at DESC)
     ''');
   }
 

@@ -9,6 +9,7 @@ import '../../../domain/entities/chat_message.dart';
 import '../../blocs/chat/chat_bloc.dart';
 import 'avatar_chat_screen.dart';
 import '../../widgets/profile_avatar.dart';
+import '../../widgets/maika_loading_animation.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -25,7 +26,12 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ChatBloc>().add(const ChatStarted());
+    final bloc = context.read<ChatBloc>();
+    // Solo cargamos la sesión al inicio real,
+    // no cada vez que se vuelve a esta pantalla.
+    if (bloc.state.conversationId.isEmpty) {
+      bloc.add(const ChatStarted());
+    }
   }
 
   @override
@@ -144,11 +150,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                         if (state.status == ChatViewStatus.loading)
-                          const Center(
-                            child: CircularProgressIndicator(
-                              color: _ChatPalette.accent,
-                            ),
-                          ),
+                          const MaikaLoadingAnimation(),
                       ],
                     ),
                   ),
@@ -170,6 +172,62 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+}
+
+class _NeonGlowBorderPainter extends CustomPainter {
+  final List<Color> colors;
+  final double rotationAngle;
+  final double borderWidth;
+  final double glowWidth;
+  final bool isProcessing;
+  final double borderRadius;
+
+  _NeonGlowBorderPainter({
+    required this.colors,
+    required this.rotationAngle,
+    required this.borderWidth,
+    required this.glowWidth,
+    required this.isProcessing,
+    this.borderRadius = 20,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(borderRadius),
+    );
+
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = glowWidth
+      ..maskFilter = MaskFilter.blur(BlurStyle.outer, glowWidth / 2);
+
+    glowPaint.color =
+        isProcessing ? colors.first.withOpacity(0.4) : colors.first.withOpacity(0.25);
+    canvas.drawRRect(rrect, glowPaint);
+
+    final borderGradient = SweepGradient(
+      center: Alignment.center,
+      colors: colors,
+      stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+      transform: GradientRotation(rotationAngle),
+    );
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth
+      ..shader = borderGradient.createShader(Offset.zero & size);
+
+    canvas.drawRRect(rrect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _NeonGlowBorderPainter oldDelegate) {
+    return oldDelegate.rotationAngle != rotationAngle ||
+        oldDelegate.isProcessing != isProcessing ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }
 
@@ -366,6 +424,14 @@ class _ChatPalette {
   static const warning = Color(0xFFFFC542);
 }
 
+const List<Color> _neonBorderColors = [
+  Color(0xFF9114FF),
+  Color(0xFF6B1B9A),
+  Color(0xFFE91E63),
+  Color(0xFF00E5FF),
+  Color(0xFF9114FF),
+];
+
 class _TypingBubble extends StatefulWidget {
   const _TypingBubble();
 
@@ -560,18 +626,25 @@ class _InputBar extends StatefulWidget {
   State<_InputBar> createState() => _InputBarState();
 }
 
-class _InputBarState extends State<_InputBar> {
+class _InputBarState extends State<_InputBar>
+    with SingleTickerProviderStateMixin {
   bool _isComposing = false;
+  late final AnimationController _neonBorderController;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_handleInputChanged);
+    _neonBorderController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_handleInputChanged);
+    _neonBorderController.dispose();
     super.dispose();
   }
 
@@ -580,6 +653,38 @@ class _InputBarState extends State<_InputBar> {
     if (composing != _isComposing) {
       setState(() => _isComposing = composing);
     }
+  }
+
+  Widget _buildNeonBorder({
+    required double borderRadius,
+    required bool isProcessing,
+    required Widget child,
+  }) {
+    return AnimatedBuilder(
+      animation: _neonBorderController,
+      builder: (context, _) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _NeonGlowBorderPainter(
+                  colors: _neonBorderColors,
+                  rotationAngle: _neonBorderController.value * 2 * pi,
+                  borderWidth: 3.0,
+                  glowWidth: isProcessing ? 20.0 : 12.0,
+                  isProcessing: isProcessing,
+                  borderRadius: borderRadius,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.all(3.0),
+              child: child,
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -591,6 +696,12 @@ class _InputBarState extends State<_InputBar> {
         widget.isOnline
             ? 'Escribe tu mensaje...'
             : 'Modo offline, envia para reintentar';
+
+    _neonBorderController.duration =
+        isSending ? const Duration(seconds: 1) : const Duration(seconds: 4);
+    if (!_neonBorderController.isAnimating) {
+      _neonBorderController.repeat();
+    }
 
       return Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -638,45 +749,49 @@ class _InputBarState extends State<_InputBar> {
                 ],
               ),
             ),
-              Row(
-                children: [
-                  Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _ChatPalette.surface,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                  child: TextField(
-                    key: const ValueKey('chat_message_field'),
-                    controller: widget.controller,
-                    focusNode: widget.focusNode,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                    minLines: 1,
-                    maxLines: 4,
-                    autofillHints: const [AutofillHints.name],
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: placeholder,
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 14,
+            Row(
+              children: [
+                Expanded(
+                  child: _buildNeonBorder(
+                    borderRadius: 22,
+                    isProcessing: isSending,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _ChatPalette.surface,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: TextField(
+                        key: const ValueKey('chat_message_field'),
+                        controller: widget.controller,
+                        focusNode: widget.focusNode,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                        minLines: 1,
+                        maxLines: 4,
+                        autofillHints: const [AutofillHints.name],
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: placeholder,
+                          hintStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            fontSize: 14,
+                          ),
+                        ),
+                        onSubmitted: (_) {
+                          if (_isComposing) {
+                            widget.onSend();
+                          }
+                        },
                       ),
                     ),
-                    onSubmitted: (_) {
-                      if (_isComposing) {
-                        widget.onSend();
-                      }
-                    },
                   ),
                 ),
-              ),
                 const SizedBox(width: 12),
               GestureDetector(
                 onTap: (_isComposing && !isSending) ? widget.onSend : null,

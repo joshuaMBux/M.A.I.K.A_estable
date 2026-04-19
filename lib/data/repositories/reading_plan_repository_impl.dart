@@ -6,10 +6,18 @@ import '../../domain/entities/reading_plan.dart';
 import '../../domain/entities/reading_plan_day.dart';
 import '../../domain/repositories/reading_plan_repository.dart';
 import '../models/plan_item_model.dart';
+import 'gamification_repository.dart';
 
 class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
-  final DatabaseHelper? _dbHelper = kIsWeb ? null : DatabaseHelper();
+  final DatabaseHelper? _dbHelper;
+  final GamificationRepository? _gamificationRepository;
   final Map<int, Set<int>> _webProgress = {};
+
+  ReadingPlanRepositoryImpl({
+    DatabaseHelper? databaseHelper,
+    GamificationRepository? gamificationRepository,
+  })  : _dbHelper = kIsWeb ? null : (databaseHelper ?? DatabaseHelper()),
+        _gamificationRepository = gamificationRepository;
 
   @override
   Future<int?> getDefaultPlanId() async {
@@ -70,28 +78,26 @@ class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
       whereArgs: [resolvedUserId, planId],
     );
 
-    final completedDays = completedRecords
-        .map((row) => row['dia'] as int)
-        .toSet();
+    final completedDays =
+        completedRecords.map((row) => row['dia'] as int).toSet();
 
     final planItems = items.map((map) => PlanItem.fromMap(map)).toList();
 
-    final days =
-        planItems
-            .map(
-              (item) => ReadingPlanDay(
-                day: item.day,
-                book: item.bookName ?? 'Lectura',
-                startChapter: item.startChapter,
-                startVerse: item.startVerse,
-                endChapter: item.endChapter,
-                endVerse: item.endVerse,
-                comment: item.comment,
-                completed: completedDays.contains(item.day),
-              ),
-            )
-            .toList()
-          ..sort((a, b) => a.day.compareTo(b.day));
+    final days = planItems
+        .map(
+          (item) => ReadingPlanDay(
+            day: item.day,
+            book: item.bookName ?? 'Lectura',
+            startChapter: item.startChapter,
+            startVerse: item.startVerse,
+            endChapter: item.endChapter,
+            endVerse: item.endVerse,
+            comment: item.comment,
+            completed: completedDays.contains(item.day),
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.day.compareTo(b.day));
 
     return ReadingPlan(
       id: planId,
@@ -135,6 +141,11 @@ class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
       );
 
       await _registerReadingActivity(db, resolvedUserId);
+      await _gamificationRepository?.rewardReadingDayCompleted(
+        userId: resolvedUserId,
+        planId: planId,
+        day: day,
+      );
     } else {
       await db.delete(
         'plan_progreso_usuario',
@@ -186,9 +197,8 @@ class ReadingPlanRepositoryImpl implements ReadingPlanRepository {
       newStreak = 1;
     } else {
       final lastDateValue = rows.first['ultima_fecha'];
-      final lastDate = lastDateValue is String
-          ? DateTime.parse(lastDateValue)
-          : today;
+      final lastDate =
+          lastDateValue is String ? DateTime.parse(lastDateValue) : today;
       final currentStreak = rows.first['racha_actual'] is int
           ? rows.first['racha_actual'] as int
           : 0;

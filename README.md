@@ -14,6 +14,9 @@
 - **Perfil de Usuario**: Configura idioma, notificaciones, tamaño de texto y más
 - **Modo Oscuro**: Soporte completo para tema claro y oscuro
 - **Juegos**: Minijuegos para aprender la Biblia
+- **Gamificación**: Sistema de recompensas y logros
+- **Avatar Overclock**: Emociones mejoradas y animaciones de carga
+- **Backend Node.js**: Servidor para funcionalidades extendidas
 
 ## Tecnologías
 
@@ -23,6 +26,8 @@
 - **BLoC**: Gestión de estado
 - **GetIt**: Inyección de dependencias
 - **Share Plus**: Compartir contenido
+- **Node.js**: Backend para servicios extendidos
+- **OpenRouter**: Integración con modelos de IA alternativos
 
 ## Estructura del Proyecto
 
@@ -63,6 +68,28 @@ El avatar soporta múltiples emociones que cambian según el contexto de la conv
 - inspirada, pensativa, sonrojada, aliviada
 - cansada, aburrida, orgullosa, picara, bufona
 - enojada, dudando, orando, feliz_logro
+- **Emociones Overclock**: Versiones mejoradas con más expresividad
+- **Animaciones de carga**: Animaciones MP4 para transiciones suaves
+
+## Últimas Actualizaciones
+
+### Mejoras Implementadas:
+- **Sistema de Gamificación**: Modelos y repositorios para logros y recompensas
+- **Avatar Overclock**: Servicio mejorado con emociones ampliadas
+- **Backend Node.js**: Servidor para funcionalidades extendidas
+- **Integración OpenRouter**: Configuración para modelos de IA alternativos
+- **Animaciones MP4**: Sistema de carga visual mejorado
+- **Refactorización de Repositorios**: Mejoras en favoritos, notas y planes de lectura
+- **Optimización de Base de Datos**: Mejoras en `database_helper.dart`
+- **Servicio de Analytics**: Seguimiento mejorado de uso
+- **Pantallas de Perfil**: Actualizaciones en UI de perfil y about
+
+### Nuevas Características:
+- Emociones Overclock con mayor expresividad
+- Sistema de logros y recompensas
+- Backend para servicios extendidos
+- Animaciones de carga personalizadas
+- Integración con múltiples proveedores de IA
 
 ## Licencia
 

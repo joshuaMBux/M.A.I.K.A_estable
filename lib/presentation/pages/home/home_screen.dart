@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/di/injection_container.dart' as di;
 import '../../../core/theme/theme_extensions.dart';
+import '../../../data/models/gamification_models.dart';
+import '../../../data/repositories/gamification_repository.dart';
 import '../../../domain/entities/note.dart';
 import '../../../domain/entities/verse.dart';
 import '../../../domain/repositories/verse_repository.dart';
@@ -45,18 +49,38 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _cachedUserId;
   List<Note> _recentNotes = const [];
   int _streak = 0;
+  StreamSubscription<GamificationDashboard>? _gamificationSubscription;
+  GamificationDashboard? _gamificationDashboard;
 
   @override
   void initState() {
     super.initState();
     _loadVerseOfTheDay();
     _loadStreak();
+    _initGamification();
   }
 
   @override
   void dispose() {
+    _gamificationSubscription?.cancel();
     _reflectionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initGamification() async {
+    if (kIsWeb || !di.sl.isRegistered<GamificationRepository>()) {
+      return;
+    }
+
+    final userId = await _readCurrentUserId();
+    await _gamificationSubscription?.cancel();
+    _gamificationSubscription = di
+        .sl<GamificationRepository>()
+        .watchDashboard(userId)
+        .listen((dashboard) {
+      if (!mounted) return;
+      setState(() => _gamificationDashboard = dashboard);
+    });
   }
 
   Future<void> _loadVerseOfTheDay() async {
@@ -96,9 +120,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final userId = await _readCurrentUserId();
       return await di.sl<GetNotesForVerseUseCase>().call(
-        userId: userId,
-        verseId: verseId,
-      );
+            userId: userId,
+            verseId: verseId,
+          );
     } catch (_) {
       return const [];
     }
@@ -281,7 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Text(
                                   'Reflexion guiada',
-                                  style: Theme.of(context).textTheme.titleMedium
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
                                       ?.copyWith(
                                         color: textPrimary,
                                         fontWeight: FontWeight.bold,
@@ -324,9 +350,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'Ideas para meditar',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                              color: textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                       const SizedBox(height: 12),
                       const _ReflectionPrompt(
@@ -350,16 +376,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 20),
                         Text(
                           'Tus reflexiones',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                color: textPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                         const SizedBox(height: 12),
-                        ...notes
-                            .take(3)
-                            .map(
+                        ...notes.take(3).map(
                               (note) => Container(
                                 margin: const EdgeInsets.only(bottom: 10),
                                 padding: const EdgeInsets.all(14),
@@ -424,13 +448,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   }
                                   modalSetState(() => isSaving = true);
                                   try {
-                                    final note = await di
-                                        .sl<AddNoteUseCase>()
-                                        .call(
-                                          userId: userId,
-                                          text: raw,
-                                          verseId: verseId,
-                                        );
+                                    final note =
+                                        await di.sl<AddNoteUseCase>().call(
+                                              userId: userId,
+                                              text: raw,
+                                              verseId: verseId,
+                                            );
                                     _reflectionController.clear();
                                     modalSetState(() {
                                       notes = [note, ...notes];
@@ -578,6 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
                       streak: _streak,
+                      coins: _gamificationDashboard?.progress.coins ?? 0,
                       onProfileTap: widget.onProfileTap,
                     ),
                     const SizedBox(height: 20),
@@ -615,6 +639,7 @@ class _Header extends StatelessWidget {
   final Color textPrimary;
   final Color textSecondary;
   final int streak;
+  final int coins;
   final VoidCallback? onProfileTap;
 
   const _Header({
@@ -623,6 +648,7 @@ class _Header extends StatelessWidget {
     required this.textPrimary,
     required this.textSecondary,
     required this.streak,
+    required this.coins,
     this.onProfileTap,
   });
 
@@ -695,6 +721,13 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          _AnimatedCoinPill(
+            coins: coins,
+            color: const Color(0xFFF59E0B),
+            textColor: textPrimary,
+            backgroundColor: scheme.overlayOnSurface(0.08),
+          ),
+          const SizedBox(width: 8),
           _StreakFlame(
             color: scheme.secondary,
             textColor: textPrimary,
@@ -703,6 +736,101 @@ class _Header extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedCoinPill extends StatefulWidget {
+  final int coins;
+  final Color color;
+  final Color textColor;
+  final Color backgroundColor;
+
+  const _AnimatedCoinPill({
+    required this.coins,
+    required this.color,
+    required this.textColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  State<_AnimatedCoinPill> createState() => _AnimatedCoinPillState();
+}
+
+class _AnimatedCoinPillState extends State<_AnimatedCoinPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _pulse;
+  late final Animation<double> _lift;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+
+    _pulse = Tween<double>(begin: 0.96, end: 1.04).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _lift = Tween<double>(begin: 0, end: -1.6).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: widget.backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color
+                    .withValues(alpha: 0.18 + (_pulse.value - 0.96)),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.translate(
+                offset: Offset(0, _lift.value),
+                child: Transform.scale(
+                  scale: _pulse.value,
+                  child: Icon(
+                    Icons.monetization_on_rounded,
+                    color: widget.color,
+                    size: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '${widget.coins}',
+                style: TextStyle(
+                  color: widget.textColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

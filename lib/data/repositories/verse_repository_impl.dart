@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../../domain/entities/verse.dart';
 import '../../domain/repositories/verse_repository.dart';
@@ -33,6 +34,20 @@ class VerseRepositoryImpl implements VerseRepository {
   static const String _bibleBaseUrl = 'https://rest.api.bible/v1';
   static const String _bibleId = '48acedcf8595c754-02';
   static const String _apiKey = 'UtwpQ6QO3Ktn2U-lbmDko';
+  static const List<Map<String, dynamic>> _dailyVerseSeeds = [
+    {'book': 'Juan', 'chapter': 3, 'verse': 16, 'theme': 'Amor de Dios'},
+    {'book': 'Salmos', 'chapter': 23, 'verse': 1, 'theme': 'Confianza'},
+    {'book': 'Jeremias', 'chapter': 29, 'verse': 11, 'theme': 'Esperanza'},
+    {'book': 'Filipenses', 'chapter': 4, 'verse': 6, 'theme': 'Paz'},
+    {'book': 'Proverbios', 'chapter': 3, 'verse': 5, 'theme': 'Sabiduria'},
+    {'book': 'Romanos', 'chapter': 8, 'verse': 28, 'theme': 'Proposito'},
+    {'book': 'Isaias', 'chapter': 41, 'verse': 10, 'theme': 'Fortaleza'},
+    {'book': 'Mateo', 'chapter': 11, 'verse': 28, 'theme': 'Descanso'},
+    {'book': 'Josue', 'chapter': 1, 'verse': 9, 'theme': 'Valentia'},
+    {'book': 'Salmos', 'chapter': 46, 'verse': 1, 'theme': 'Refugio'},
+    {'book': '1 Corintios', 'chapter': 13, 'verse': 4, 'theme': 'Amor'},
+    {'book': '2 Timoteo', 'chapter': 1, 'verse': 7, 'theme': 'Dominio propio'},
+  ];
 
   final VersiculoRepository? _versiculoRepository;
   final http.Client _httpClient;
@@ -44,6 +59,104 @@ class VerseRepositoryImpl implements VerseRepository {
     http.Client? httpClient,
   })  : _versiculoRepository = versiculoRepository,
         _httpClient = httpClient ?? http.Client();
+
+  Verse _mapVersiculoToVerse(Versiculo versiculo) {
+    return Verse(
+      id: versiculo.idVersiculo?.toString() ??
+          '${versiculo.idLibro}_${versiculo.capitulo}_${versiculo.versiculo}',
+      book: versiculo.nombreLibro ?? '',
+      chapter: versiculo.capitulo,
+      verse: versiculo.versiculo,
+      text: versiculo.texto,
+      translation: versiculo.version,
+      tags: const [],
+      isFavorite: false,
+    );
+  }
+
+  int _dayOfYear(DateTime date) {
+    final startOfYear = DateTime(date.year, 1, 1);
+    return date.difference(startOfYear).inDays;
+  }
+
+  Map<String, dynamic> _selectDailySeed(DateTime date) {
+    final index = _dayOfYear(date) % _dailyVerseSeeds.length;
+    return _dailyVerseSeeds[index];
+  }
+
+  Future<Verse?> _loadStoredVerseOfTheDay(Database db, String date) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        v.*,
+        l.nombre AS nombre_libro,
+        l.abreviatura AS abreviatura_libro
+      FROM versiculo_del_dia vd
+      JOIN versiculo v ON vd.id_versiculo = v.id_versiculo
+      LEFT JOIN libro l ON v.id_libro = l.id_libro
+      WHERE vd.fecha = ?
+      LIMIT 1
+      ''',
+      [date],
+    );
+
+    if (rows.isEmpty) return null;
+
+    return _mapVersiculoToVerse(Versiculo.fromMap(rows.first));
+  }
+
+  Future<Versiculo?> _findStoredVerseRecord(
+    String book,
+    int chapter,
+    int verse,
+  ) async {
+    final repo = _versiculoRepository;
+    if (repo == null) return null;
+
+    final chapterVerses = await repo.getVersesByBookAndChapter(book, chapter);
+    for (final item in chapterVerses) {
+      if (item.versiculo == verse) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  Future<Verse?> _generateAndStoreVerseOfTheDay(
+    Database db,
+    String date,
+  ) async {
+    if (kIsWeb || _versiculoRepository == null) {
+      return null;
+    }
+
+    final seed = _selectDailySeed(DateTime.parse(date));
+    final book = seed['book'] as String;
+    final chapter = seed['chapter'] as int;
+    final verseNumber = seed['verse'] as int;
+    final theme = seed['theme'] as String;
+
+    await getChapter(book, chapter);
+
+    final versiculo = await _findStoredVerseRecord(book, chapter, verseNumber);
+    final verseId = versiculo?.idVersiculo;
+    if (versiculo == null || verseId == null) {
+      return null;
+    }
+
+    await db.insert(
+      'versiculo_del_dia',
+      {
+        'fecha': date,
+        'id_versiculo': verseId,
+        'fuente': 'api.bible',
+        'tema': theme,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    return _mapVersiculoToVerse(versiculo);
+  }
 
   @override
   Future<List<Verse>> searchVerses(String query) async {
@@ -110,16 +223,14 @@ class VerseRepositoryImpl implements VerseRepository {
     final exists = await repo.chapterExists(book, chapter);
 
     if (!exists) {
-      final versiculosFromApi =
-          await _fetchChapterFromApi(book, chapter);
+      final versiculosFromApi = await _fetchChapterFromApi(book, chapter);
 
       if (versiculosFromApi.isNotEmpty) {
         await repo.saveVerses(versiculosFromApi);
       }
     }
 
-    final storedVerses =
-        await repo.getVersesByBookAndChapter(book, chapter);
+    final storedVerses = await repo.getVersesByBookAndChapter(book, chapter);
 
     return storedVerses
         .map(
@@ -226,8 +337,7 @@ class VerseRepositoryImpl implements VerseRepository {
 
     for (var i = 0; i < matches.length; i++) {
       final match = matches[i];
-      final verseNumber =
-          int.tryParse(match.group(1) ?? '') ?? (i + 1);
+      final verseNumber = int.tryParse(match.group(1) ?? '') ?? (i + 1);
 
       final start = match.end;
       final end =
@@ -303,8 +413,7 @@ class VerseRepositoryImpl implements VerseRepository {
       throw UnsupportedError('No hay repositorio de versiculos disponible');
     }
 
-    final existing =
-        await repo.getVersesByBookAndChapter(book, 1);
+    final existing = await repo.getVersesByBookAndChapter(book, 1);
     if (existing.isNotEmpty) {
       return existing.first.idLibro;
     }
@@ -413,46 +522,38 @@ class VerseRepositoryImpl implements VerseRepository {
 
   @override
   Future<Verse?> getVerseOfTheDay() async {
-    // Intentar obtener el versículo del día desde SQLite (tabla versiculo_del_dia).
+    if (kIsWeb) {
+      return const VerseModel(
+        id: '1',
+        book: 'Juan',
+        chapter: 3,
+        verse: 16,
+        text:
+            'Porque de tal manera amo Dios al mundo, que ha dado a su Hijo unigenito, para que todo aquel que en el cree, no se pierda, mas tenga vida eterna.',
+        translation: 'RVR1960',
+        tags: ['amor', 'salvacion', 'vida eterna'],
+        isFavorite: false,
+      );
+    }
+
     try {
       final dbHelper = DatabaseHelper();
       final db = await dbHelper.database;
       final today = DateTime.now().toIso8601String().split('T')[0];
 
-      final rows = await db.rawQuery(
-        '''
-        SELECT
-          v.*,
-          l.nombre AS nombre_libro,
-          l.abreviatura AS abreviatura_libro
-        FROM versiculo_del_dia vd
-        JOIN versiculo v ON vd.id_versiculo = v.id_versiculo
-        LEFT JOIN libro l ON v.id_libro = l.id_libro
-        WHERE vd.fecha = ?
-        LIMIT 1
-        ''',
-        [today],
-      );
+      final storedVerse = await _loadStoredVerseOfTheDay(db, today);
+      if (storedVerse != null) {
+        return storedVerse;
+      }
 
-      if (rows.isNotEmpty) {
-        final versiculo = Versiculo.fromMap(rows.first);
-        return Verse(
-          id: versiculo.idVersiculo?.toString() ??
-              '${versiculo.idLibro}_${versiculo.capitulo}_${versiculo.versiculo}',
-          book: versiculo.nombreLibro ?? '',
-          chapter: versiculo.capitulo,
-          verse: versiculo.versiculo,
-          text: versiculo.texto,
-          translation: versiculo.version,
-          tags: const [],
-          isFavorite: false,
-        );
+      final generatedVerse = await _generateAndStoreVerseOfTheDay(db, today);
+      if (generatedVerse != null) {
+        return generatedVerse;
       }
     } catch (_) {
       // Ignorar errores y usar el fallback mock.
     }
 
-    // Fallback: mantener Juan 3:16 como versículo por defecto si no hay dato en SQLite.
     return const VerseModel(
       id: '1',
       book: 'Juan',

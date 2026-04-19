@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,22 +7,97 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/di/injection_container.dart' as di;
+import '../../../data/models/gamification_models.dart';
+import '../../../data/repositories/gamification_repository.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/settings/settings_cubit.dart';
+import '../../widgets/profile_avatar.dart';
 import '../auth/auth_screen.dart';
-import 'settings_screen.dart';
+import 'about_screen.dart';
+import 'help_support_screen.dart';
 import 'notifications_screen.dart';
 import 'privacy_screen.dart';
-import 'help_support_screen.dart';
-import 'about_screen.dart';
-import '../../widgets/profile_avatar.dart';
+import 'settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  /// Guarda la imagen escogida en un directorio propio de la app
-  /// y devuelve la ruta final que sí será estable en el tiempo.
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  StreamSubscription<GamificationDashboard>? _gamificationSubscription;
+  GamificationDashboard? _gamificationDashboard;
+  _SessionProfileData _session = const _SessionProfileData();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  @override
+  void dispose() {
+    _gamificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadSession() async {
+    final authState = context.read<AuthBloc>().state;
+    var userId = 0;
+    var userName = 'Usuario';
+    var userEmail = 'Sin correo disponible';
+
+    if (authState is AuthSuccess) {
+      userId = int.tryParse(authState.user.id) ?? 0;
+      userName = authState.user.name;
+      userEmail = authState.user.email;
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      userId = prefs.getInt('user_id') ?? 0;
+      final rawUser = prefs.getString('user_data');
+      if (rawUser != null && rawUser.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawUser) as Map<String, dynamic>;
+          userName = (decoded['name'] as String?)?.trim().isNotEmpty == true
+              ? decoded['name'] as String
+              : userName;
+          userEmail = (decoded['email'] as String?)?.trim().isNotEmpty == true
+              ? decoded['email'] as String
+              : userEmail;
+        } catch (_) {}
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _session = _SessionProfileData(
+        userId: userId,
+        userName: userName,
+        userEmail: userEmail,
+      );
+    });
+
+    if (userId > 0 && di.sl.isRegistered<GamificationRepository>()) {
+      await _bindGamification(userId);
+    }
+  }
+
+  Future<void> _bindGamification(int userId) async {
+    await _gamificationSubscription?.cancel();
+    _gamificationSubscription = di
+        .sl<GamificationRepository>()
+        .watchDashboard(userId)
+        .listen((dashboard) {
+      if (!mounted) return;
+      setState(() => _gamificationDashboard = dashboard);
+    });
+  }
+
   Future<String> _persistPickedImage(
     XFile picked, {
     required String prefix,
@@ -31,7 +108,6 @@ class ProfileScreen extends StatelessWidget {
         '${prefix}_${DateTime.now().millisecondsSinceEpoch}${ext.isNotEmpty ? ext : '.jpg'}';
     final target = File(p.join(appDir.path, 'profile', fileName));
 
-    // Asegurar que exista la carpeta 'profile'
     if (!await target.parent.exists()) {
       await target.parent.create(recursive: true);
     }
@@ -41,19 +117,15 @@ class ProfileScreen extends StatelessWidget {
     return target.path;
   }
 
-  Future<void> _pickImage(
-    BuildContext context,
-    ImageSource source,
-  ) async {
+  Future<void> _pickImage(BuildContext context, ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: source,
       imageQuality: 80,
     );
     if (picked == null) return;
-    final savedPath =
-        await _persistPickedImage(picked, prefix: 'avatar');
-    // Actualiza settings (y se guarda en SharedPreferences)
+    final savedPath = await _persistPickedImage(picked, prefix: 'avatar');
+    if (!context.mounted) return;
     context.read<SettingsCubit>().setProfileImagePath(savedPath);
   }
 
@@ -79,7 +151,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Elegir de galer\u00eda'),
+                title: const Text('Elegir de galeria'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickImage(rootContext, ImageSource.gallery);
@@ -90,51 +162,7 @@ class ProfileScreen extends StatelessWidget {
                 title: const Text('Eliminar foto'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
-                  rootContext
-                      .read<SettingsCubit>()
-                      .setProfileImagePath(null);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAvatarSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Tomar foto'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(context, ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Elegir de galería'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(context, ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Eliminar foto'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context.read<SettingsCubit>().setProfileImagePath(null);
+                  rootContext.read<SettingsCubit>().setProfileImagePath(null);
                 },
               ),
             ],
@@ -154,11 +182,9 @@ class ProfileScreen extends StatelessWidget {
       imageQuality: 80,
     );
     if (picked == null) return;
-    final savedPath =
-        await _persistPickedImage(picked, prefix: 'bg');
-    context
-        .read<SettingsCubit>()
-        .setProfileBackgroundPath(savedPath);
+    final savedPath = await _persistPickedImage(picked, prefix: 'bg');
+    if (!context.mounted) return;
+    context.read<SettingsCubit>().setProfileBackgroundPath(savedPath);
   }
 
   void _showBackgroundSheetFixed(BuildContext context) {
@@ -183,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Elegir fondo desde galer\u00eda'),
+                title: const Text('Elegir fondo desde galeria'),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _pickBackgroundImage(rootContext, ImageSource.gallery);
@@ -206,45 +232,95 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showBackgroundSheet(BuildContext context) {
-    showModalBottomSheet(
+  void _showGamificationSheet() {
+    showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera_back_outlined),
-                title: const Text('Tomar foto para fondo'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickBackgroundImage(context, ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Elegir fondo desde galería'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickBackgroundImage(context, ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Eliminar fondo'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  context
-                      .read<SettingsCubit>()
-                      .setProfileBackgroundPath(null);
-                },
+        final dashboard = _gamificationDashboard;
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 80, 16, 16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.78,
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF20243D),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 24,
+                offset: Offset(0, 16),
               ),
             ],
           ),
+          child: dashboard == null
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.max,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 54,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Logros y ranking',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Todo se guarda localmente en este dispositivo.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          _AchievementGroup(
+                            title:
+                                'Desbloqueados (${dashboard.unlockedAchievements.length})',
+                            achievements: dashboard.unlockedAchievements,
+                            emptyLabel: 'Todavia no has desbloqueado logros.',
+                            unlocked: true,
+                          ),
+                          const SizedBox(height: 16),
+                          _AchievementGroup(
+                            title:
+                                'Bloqueados (${dashboard.lockedAchievements.length})',
+                            achievements: dashboard.lockedAchievements,
+                            emptyLabel: 'No hay logros bloqueados.',
+                            unlocked: false,
+                          ),
+                          const SizedBox(height: 16),
+                          _RankingSection(ranking: dashboard.ranking),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
         );
       },
     );
@@ -253,269 +329,327 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    String userName = 'Usuario Demo';
-    String userEmail = 'demo@example.com';
-    if (authState is AuthSuccess) {
-      userName = authState.user.name;
-      userEmail = authState.user.email;
-    }
-
     final settingsState = context.watch<SettingsCubit>().state;
     final bgPath = settingsState.settings.profileBackgroundPath;
+    final sessionUserId = authState is AuthSuccess
+        ? int.tryParse(authState.user.id) ?? _session.userId
+        : _session.userId;
+    final userName =
+        authState is AuthSuccess ? authState.user.name : _session.userName;
+    final userEmail =
+        authState is AuthSuccess ? authState.user.email : _session.userEmail;
+    final dashboard = _gamificationDashboard;
+    final progress = dashboard?.progress;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF10B981).withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color(0xFF10B981),
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Mi Perfil',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Gestiona tu cuenta',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header fijo
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  GestureDetector(
-                    onTap: () => _showBackgroundSheetFixed(context),
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                        image: bgPath == null || bgPath.isEmpty
-                            ? null
-                            : DecorationImage(
-                                image: FileImage(
-                                  // ignore: prefer_interpolation_to_compose_strings
-                                  File(bgPath),
-                                ),
-                                fit: BoxFit.cover,
-                              ),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          color: bgPath == null || bgPath.isEmpty
-                              ? Colors.transparent
-                              : Colors.black.withValues(alpha: 0.4),
+                          color: const Color(0xFF10B981).withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _showAvatarSheetFixed(context),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.4),
-                                    width: 3,
-                                  ),
-                                ),
-                                child: const ProfileAvatar(radius: 38),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              userName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              userEmail,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981)
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(0xFF10B981)
-                                  .withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.local_fire_department,
-                                size: 16,
-                                color: Color(0xFF10B981),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Usuario activo',
-                                style: const TextStyle(
-                                  color: Color(0xFF10B981),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: const Icon(
+                          Icons.person,
+                          color: Color(0xFF10B981),
+                          size: 24,
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mi Perfil',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Gestiona tu cuenta',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ),
+                      IconButton(
+                        onPressed: _showGamificationSheet,
+                        icon: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFF59E0B).withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B)
+                                  .withValues(alpha: 0.32),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.emoji_events_outlined,
+                            color: Color(0xFFF59E0B),
+                            size: 20,
+                          ),
+                        ),
+                        tooltip: 'Ver logros y ranking',
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        _buildProfileOption(
-                          context,
-                          'Configuración',
-                          Icons.settings_outlined,
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const SettingsScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildProfileOption(
-                          context,
-                          'Notificaciones',
-                          Icons.notifications_outlined,
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const NotificationsScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildProfileOption(
-                          context,
-                          'Privacidad',
-                          Icons.privacy_tip_outlined,
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const PrivacyScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildProfileOption(
-                          context,
-                          'Ayuda y Soporte',
-                          Icons.help_outline,
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const HelpSupportScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildProfileOption(
-                          context,
-                          'Acerca de',
-                          Icons.info_outline,
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AboutScreen(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildProfileOption(
-                          context,
-                          'Cerrar Sesión',
-                          Icons.logout,
-                          () => _showLogoutDialog(context),
-                          isDestructive: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              // Contenido scrolleable
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      // Tarjeta principal del perfil con altura máxima
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final availableHeight = screenHeight * 0.45;
+                          return ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: availableHeight,
+                            ),
+                            child: GestureDetector(
+                              onTap: () => _showBackgroundSheetFixed(context),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                  image: bgPath == null || bgPath.isEmpty
+                                      ? null
+                                      : DecorationImage(
+                                          image: FileImage(File(bgPath)),
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: bgPath == null || bgPath.isEmpty
+                                        ? Colors.transparent
+                                        : Colors.black.withValues(alpha: 0.42),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: SingleChildScrollView(
+                                    physics: const ClampingScrollPhysics(),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () =>
+                                              _showAvatarSheetFixed(context),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.4),
+                                                width: 2.5,
+                                              ),
+                                            ),
+                                            child:
+                                                const ProfileAvatar(radius: 32),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          userName.isEmpty
+                                              ? 'Usuario'
+                                              : userName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          userEmail.isEmpty
+                                              ? 'Sin correo disponible'
+                                              : userEmail,
+                                          style: TextStyle(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.8),
+                                            fontSize: 11,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981)
+                                                .withValues(alpha: 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: const Color(0xFF10B981)
+                                                  .withValues(alpha: 0.3),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.local_fire_department,
+                                                size: 13,
+                                                color: Color(0xFF10B981),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                sessionUserId > 0
+                                                    ? 'Usuario activo'
+                                                    : 'Sesion local',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF10B981),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        _ProfileProgressCard(
+                                          progress: progress,
+                                          unlockedAchievements:
+                                              dashboard?.unlockedCount ?? 0,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      // Opciones del perfil
+                      _buildProfileOption(
+                        context,
+                        'Configuracion',
+                        Icons.settings_outlined,
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildProfileOption(
+                        context,
+                        'Notificaciones',
+                        Icons.notifications_outlined,
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildProfileOption(
+                        context,
+                        'Privacidad',
+                        Icons.privacy_tip_outlined,
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildProfileOption(
+                        context,
+                        'Ayuda y Soporte',
+                        Icons.help_outline,
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HelpSupportScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildProfileOption(
+                        context,
+                        'Acerca de',
+                        Icons.info_outline,
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AboutScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildProfileOption(
+                        context,
+                        'Cerrar Sesion',
+                        Icons.logout,
+                        () => _showLogoutDialog(context),
+                        isDestructive: true,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -583,11 +717,11 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Cerrar Sesión',
+          'Cerrar Sesion',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          '¿Estás seguro de que quieres cerrar sesión?',
+          'Estas seguro de que quieres cerrar sesion?',
           style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
         ),
         actions: [
@@ -602,12 +736,12 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () {
               context.read<AuthBloc>().add(LogoutRequested());
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
+                MaterialPageRoute(builder: (_) => const AuthScreen()),
                 (route) => false,
               );
             },
             child: const Text(
-              'Cerrar Sesión',
+              'Cerrar Sesion',
               style: TextStyle(color: Colors.red),
             ),
           ),
@@ -615,4 +749,373 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfileProgressCard extends StatelessWidget {
+  final GamificationUserProgress? progress;
+  final int unlockedAchievements;
+
+  const _ProfileProgressCard({
+    required this.progress,
+    required this.unlockedAchievements,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final level = progress?.level ?? 1;
+    final coins = progress?.coins ?? 0;
+    final xpProgress = progress?.xpProgress ?? 0;
+    final currentLevelXp = progress?.currentLevelXp ?? 0;
+    final xpForNextLevel = progress?.xpForNextLevel ?? 100;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _ProfileStatTile(
+                  label: 'Nivel',
+                  value: '$level',
+                  icon: Icons.stars_rounded,
+                  color: const Color(0xFF8B5CF6),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _ProfileStatTile(
+                  label: 'Coins',
+                  value: '$coins',
+                  icon: Icons.monetization_on_rounded,
+                  color: const Color(0xFFF59E0B),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _ProfileStatTile(
+                  label: 'Logros',
+                  value: '$unlockedAchievements',
+                  icon: Icons.emoji_events_outlined,
+                  color: const Color(0xFFEC4899),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Text(
+                'XP',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$currentLevelXp / $xpForNextLevel',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: xpProgress.clamp(0, 1),
+              minHeight: 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF8B5CF6),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _ProfileStatTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 9,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AchievementGroup extends StatelessWidget {
+  final String title;
+  final List<AchievementStatus> achievements;
+  final String emptyLabel;
+  final bool unlocked;
+
+  const _AchievementGroup({
+    required this.title,
+    required this.achievements,
+    required this.emptyLabel,
+    required this.unlocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = unlocked ? const Color(0xFF10B981) : const Color(0xFF6B7280);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (achievements.isEmpty)
+            Text(
+              emptyLabel,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 12,
+              ),
+            ),
+          ...achievements.map(
+            (achievement) => Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      unlocked
+                          ? Icons.verified_rounded
+                          : Icons.lock_outline_rounded,
+                      color: accent,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          achievement.definition.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          achievement.definition.description,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.68),
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RankingSection extends StatelessWidget {
+  final List<LocalRankingEntry> ranking;
+
+  const _RankingSection({required this.ranking});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ranking local',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (ranking.isEmpty)
+            Text(
+              'Todavia no hay usuarios con progreso local.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 12,
+              ),
+            ),
+          ...ranking.take(10).map(
+                (entry) => Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: entry.isCurrentUser
+                        ? const Color(0xFF8B5CF6).withValues(alpha: 0.16)
+                        : Colors.black.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: entry.isCurrentUser
+                          ? const Color(0xFF8B5CF6).withValues(alpha: 0.35)
+                          : Colors.white.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '#${entry.position}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.userName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Nivel ${entry.level}  |  ${entry.xpTotal} XP  |  ${entry.coins} coins',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.68),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (entry.isCurrentUser)
+                        const Icon(
+                          Icons.person_pin_circle_rounded,
+                          color: Color(0xFF8B5CF6),
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionProfileData {
+  final int userId;
+  final String userName;
+  final String userEmail;
+
+  const _SessionProfileData({
+    this.userId = 0,
+    this.userName = 'Usuario',
+    this.userEmail = 'Sin correo disponible',
+  });
 }

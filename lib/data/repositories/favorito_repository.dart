@@ -1,8 +1,16 @@
 import '../../core/database/database_helper.dart';
 import '../models/favorito_model.dart';
+import 'gamification_repository.dart';
 
 class FavoritoRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final DatabaseHelper _dbHelper;
+  final GamificationRepository? _gamificationRepository;
+
+  FavoritoRepository({
+    DatabaseHelper? databaseHelper,
+    GamificationRepository? gamificationRepository,
+  })  : _dbHelper = databaseHelper ?? DatabaseHelper(),
+        _gamificationRepository = gamificationRepository;
 
   Future<List<Favorito>> getFavoritosByUsuario(int idUsuario) async {
     final db = await _dbHelper.database;
@@ -43,11 +51,16 @@ class FavoritoRepository {
 
   Future<int> addFavorito(int idUsuario, int idVersiculo) async {
     final db = await _dbHelper.database;
-    return await db.insert('favorito', {
+    final inserted = await db.insert('favorito', {
       'id_usuario': idUsuario,
       'id_versiculo': idVersiculo,
       'creado_en': DateTime.now().toIso8601String(),
     });
+    await _gamificationRepository?.rewardFavoriteVerse(
+      userId: idUsuario,
+      verseId: idVersiculo,
+    );
+    return inserted;
   }
 
   Future<int> removeFavorito(int idUsuario, int idVersiculo) async {
@@ -85,7 +98,8 @@ class FavoritoRepository {
     );
 
     if (libros.isEmpty) {
-      throw Exception('No se encontro el libro $libroNombre en la base de datos');
+      throw Exception(
+          'No se encontro el libro $libroNombre en la base de datos');
     }
 
     final idLibro = libros.first['id_libro'] as int;

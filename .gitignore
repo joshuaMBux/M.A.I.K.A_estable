@@ -128,3 +128,6 @@ lib/core/constants/secrets.dart
 # Temporary files
 *.tmp
 *.temp
+
+# Backend environment
+backend/.env

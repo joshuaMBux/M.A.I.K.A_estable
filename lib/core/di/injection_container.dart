@@ -10,6 +10,7 @@ import '../../data/repositories/usuario_repository.dart';
 import '../../data/repositories/versiculo_repository.dart';
 import '../../data/repositories/reading_plan_repository_impl.dart';
 import '../../data/repositories/devotional_repository_impl.dart';
+import '../../data/repositories/gamification_repository.dart';
 import '../../data/repositories/note_repository_impl.dart';
 import '../../data/repositories/favorito_repository.dart';
 import '../../data/repositories/user_activity_repository.dart';
@@ -51,6 +52,7 @@ import '../../domain/usecases/settings/get_user_settings_usecase.dart';
 import '../../domain/usecases/settings/update_user_settings_usecase.dart';
 import '../../presentation/blocs/settings/settings_cubit.dart';
 import '../services/notification_service.dart';
+import '../services/analytics_service.dart';
 
 final sl = GetIt.instance;
 
@@ -81,16 +83,16 @@ Future<void> init() async {
 
   // Repository supports web fallbacks internally; inject services when available
   sl.registerLazySingleton(() => AudioBibleRepository(
-    dbHelper: databaseHelper,
-    syncService: !kIsWeb ? sl<AudioSyncService>() : null,
-    downloadService: !kIsWeb ? sl<AudioDownloadService>() : null,
-  ));
+        dbHelper: databaseHelper,
+        syncService: !kIsWeb ? sl<AudioSyncService>() : null,
+        downloadService: !kIsWeb ? sl<AudioDownloadService>() : null,
+      ));
 
   // BLoC depends on repository and player manager; safe for all platforms
   sl.registerFactory(() => AudioBibleBloc(
-    repository: sl<AudioBibleRepository>(),
-    playerManager: sl<AudioPlayerManager>(),
-  ));
+        repository: sl<AudioBibleRepository>(),
+        playerManager: sl<AudioPlayerManager>(),
+      ));
 
   // BLoCs
   sl.registerFactory(
@@ -176,20 +178,41 @@ Future<void> init() async {
     ),
   );
   sl.registerLazySingleton<ReadingPlanRepository>(
-    () => ReadingPlanRepositoryImpl(),
+    () => ReadingPlanRepositoryImpl(
+      databaseHelper: kIsWeb ? null : sl<DatabaseHelper>(),
+      gamificationRepository:
+          !kIsWeb && sl.isRegistered<GamificationRepository>()
+              ? sl<GamificationRepository>()
+              : null,
+    ),
   );
   sl.registerLazySingleton<DevotionalRepository>(
     () => DevotionalRepositoryImpl(),
   );
   sl.registerLazySingleton<NoteRepository>(
-    () => NoteRepositoryImpl(kIsWeb ? null : sl<DatabaseHelper>()),
+    () => NoteRepositoryImpl(
+      kIsWeb ? null : sl<DatabaseHelper>(),
+      gamificationRepository:
+          !kIsWeb && sl.isRegistered<GamificationRepository>()
+              ? sl<GamificationRepository>()
+              : null,
+    ),
   );
 
   // Database repositories (only for non-web platforms)
   if (!kIsWeb) {
     sl.registerLazySingleton(() => UsuarioRepository());
     sl.registerLazySingleton(() => VersiculoRepository());
-    sl.registerLazySingleton(() => FavoritoRepository());
+    sl.registerLazySingleton(
+        () => GamificationRepository(sl<DatabaseHelper>()));
+    AnalyticsService()
+        .attachGamificationRepository(sl<GamificationRepository>());
+    sl.registerLazySingleton(
+      () => FavoritoRepository(
+        databaseHelper: sl<DatabaseHelper>(),
+        gamificationRepository: sl<GamificationRepository>(),
+      ),
+    );
     sl.registerLazySingleton(() => UserActivityRepository());
   }
 

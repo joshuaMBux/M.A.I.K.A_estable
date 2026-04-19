@@ -3,12 +3,17 @@ import '../../core/database/database_helper.dart';
 import '../../domain/entities/note.dart';
 import '../../domain/repositories/note_repository.dart';
 import '../models/note_model.dart';
+import 'gamification_repository.dart';
 
 class NoteRepositoryImpl implements NoteRepository {
   final DatabaseHelper? _dbHelper;
+  final GamificationRepository? _gamificationRepository;
 
-  NoteRepositoryImpl(DatabaseHelper? databaseHelper)
-    : _dbHelper = kIsWeb ? null : databaseHelper;
+  NoteRepositoryImpl(
+    DatabaseHelper? databaseHelper, {
+    GamificationRepository? gamificationRepository,
+  })  : _dbHelper = kIsWeb ? null : databaseHelper,
+        _gamificationRepository = gamificationRepository;
 
   @override
   Future<Note> addNote({
@@ -30,6 +35,11 @@ class NoteRepositoryImpl implements NoteRepository {
     final db = await _dbHelper!.database;
     final noteModel = NoteModel(userId: userId, verseId: verseId, text: text);
     final id = await db.insert('nota', noteModel.toMap());
+    await _gamificationRepository?.rewardReflectionSaved(
+      userId: userId,
+      noteId: id,
+      verseId: verseId,
+    );
     return Note(
       id: id,
       userId: userId,

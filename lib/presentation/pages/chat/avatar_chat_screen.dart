@@ -1,7 +1,19 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'avatar_rasa_service.dart';
 import 'avatar_widget.dart';
+import 'avatar_overclock_service.dart';
+
+const List<Color> _neonBorderColors = [
+  Color(0xFF9114FF),
+  Color(0xFF6B1B9A),
+  Color(0xFFE91E63),
+  Color(0xFF00E5FF),
+  Color(0xFF9114FF),
+];
 
 /// Pantalla de chat alternativa con avatar 2D animado.
 /// No modifica la lógica del ChatScreen existente.
@@ -14,19 +26,27 @@ class AvatarChatScreen extends StatefulWidget {
 
 class _AvatarChatScreenState extends State<AvatarChatScreen>
     with SingleTickerProviderStateMixin {
-  final AvatarRasaService _rasa = AvatarRasaService();
+  static const Duration _overclockWarmupThreshold =
+      Duration(milliseconds: 1800);
+  static const Duration _overclockLongWaitThreshold = Duration(seconds: 6);
 
+  final AvatarRasaService _rasa = AvatarRasaService();
+  final AvatarOverclockService _overclock = AvatarOverclockService();
+
+  bool _isOverclockEnabled = false;
   bool _isSpeaking = false;
   bool _isWaitingForBot = false;
+  bool _isComposing = false;
   String _currentEmotion = 'neutral';
   final TextEditingController _ctrl = TextEditingController();
-  String _botReply =
-      '¡Hola! Soy tu avatar anime 🌸\n¿En qué te ayudo hoy?';
+  String _botReply = '¡Hola! Soy tu avatar anime 🌸\n¿En qué te ayudo hoy?';
 
   late final AnimationController _animController;
   late final Animation<double> _titleAnimation;
   late final Animation<double> _cardAnimation;
   late final Animation<double> _sendButtonAnimation;
+  Timer? _thinkingTimer;
+  int _animationRunId = 0;
 
   @override
   void initState() {
@@ -47,14 +67,646 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
       parent: _animController,
       curve: const Interval(0.4, 1.0, curve: Curves.easeOutBack),
     );
+    _ctrl.addListener(_handleInputChanged);
     _animController.forward();
   }
 
   @override
   void dispose() {
+    _thinkingTimer?.cancel();
+    _ctrl.removeListener(_handleInputChanged);
     _ctrl.dispose();
     _animController.dispose();
     super.dispose();
+  }
+
+  void _handleInputChanged() {
+    final composing = _ctrl.text.trim().isNotEmpty;
+    if (composing != _isComposing) {
+      setState(() => _isComposing = composing);
+    }
+  }
+
+  int _startAnimationRun() {
+    _thinkingTimer?.cancel();
+    _thinkingTimer = null;
+    _animationRunId++;
+    return _animationRunId;
+  }
+
+  bool _isAnimationActive(int runId) => mounted && runId == _animationRunId;
+
+  String _restingEmotionForMode(bool useOverclock) {
+    return useOverclock ? 'neutral_cool' : 'neutral';
+  }
+
+  String _conversationCueForText(String text) {
+    final lower = text.toLowerCase();
+
+    if (_isPrayerRequest(text)) {
+      return 'prayer';
+    }
+
+    if (lower.contains('quiz') ||
+        lower.contains('pregunta') ||
+        lower.contains('trivia') ||
+        lower.contains('respuesta correcta') ||
+        lower.contains('respuesta incorrecta') ||
+        lower.contains('puntaje') ||
+        lower.contains('nivel')) {
+      return 'quiz';
+    }
+
+    if (lower.contains('curiosidad') ||
+        lower.contains('sabias que') ||
+        lower.contains('sabías que') ||
+        lower.contains('dato interesante') ||
+        lower.contains('sorprendente')) {
+      return 'curiosity';
+    }
+
+    if (lower.contains('hola') ||
+        lower.contains('buenas') ||
+        lower.contains('hey') ||
+        lower.contains('shalom')) {
+      return 'greeting';
+    }
+
+    if (lower.contains('adios') ||
+        lower.contains('adiós') ||
+        lower.contains('hasta luego') ||
+        lower.contains('nos vemos') ||
+        lower.contains('me voy')) {
+      return 'farewell';
+    }
+
+    if (lower.contains('te quiero') ||
+        lower.contains('te amo') ||
+        lower.contains('me gustas') ||
+        lower.contains('me caes bien') ||
+        lower.contains('gracias maika') ||
+        lower.contains('aww')) {
+      return 'affection';
+    }
+
+    if (lower.contains('triste') ||
+        lower.contains('solo') ||
+        lower.contains('soledad') ||
+        lower.contains('miedo') ||
+        lower.contains('mal') ||
+        lower.contains('ansiedad') ||
+        lower.contains('cansad') ||
+        lower.contains('ayuda espiritual')) {
+      return 'comfort';
+    }
+
+    if (lower.contains('devocional') ||
+        lower.contains('versiculo') ||
+        lower.contains('versículo') ||
+        lower.contains('biblia') ||
+        lower.contains('promesa') ||
+        lower.contains('historia b')) {
+      return 'devotional';
+    }
+
+    if (lower.contains('felicidades') ||
+        lower.contains('logro') ||
+        lower.contains('correcto') ||
+        lower.contains('orgullosa de ti')) {
+      return 'celebration';
+    }
+
+    if (lower.contains('no entiendo') ||
+        lower.contains('no entendi') ||
+        lower.contains('no entendí') ||
+        lower.contains('fallo') ||
+        lower.contains('falló') ||
+        lower.contains('error')) {
+      return 'fallback';
+    }
+
+    return 'general';
+  }
+
+  String _resolveResponseCue({
+    required String userCue,
+    required String responseText,
+    required String finalEmotion,
+    required bool holdPrayerPose,
+  }) {
+    if (holdPrayerPose || finalEmotion == 'orando') {
+      return 'prayer';
+    }
+
+    final responseCue = _conversationCueForText(responseText);
+    if (responseCue != 'general') {
+      return responseCue;
+    }
+
+    if (finalEmotion == 'feliz_logro' || finalEmotion == 'orgullosa') {
+      return 'celebration';
+    }
+    if (finalEmotion == 'sorprendida') {
+      return 'curiosity';
+    }
+    if (finalEmotion == 'aliviada' || finalEmotion == 'triste') {
+      return 'comfort';
+    }
+    if (finalEmotion == 'sonrojada' || finalEmotion == 'picara_sonrojada') {
+      return 'affection';
+    }
+    if (finalEmotion == 'confundida' || finalEmotion == 'dudando') {
+      return 'fallback';
+    }
+    if (finalEmotion == 'inspirada') {
+      return 'devotional';
+    }
+
+    return userCue;
+  }
+
+  bool _isPrayerRequest(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('oracion') ||
+        lower.contains('oración') ||
+        lower.contains('orar') ||
+        lower.contains('oremos') ||
+        lower.contains('ayuda espiritual') ||
+        lower.contains('ayudame a orar') ||
+        lower.contains('ayúdame a orar');
+  }
+
+  List<String> _compactSequence(List<String> sequence) {
+    final compacted = <String>[];
+    for (final emotion in sequence) {
+      if (emotion.isEmpty) continue;
+      if (compacted.isEmpty || compacted.last != emotion) {
+        compacted.add(emotion);
+      }
+    }
+    return compacted;
+  }
+
+  Future<void> _setAvatarState({
+    required String emotion,
+    bool? speaking,
+    bool? waiting,
+    String? reply,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _currentEmotion = emotion;
+      if (speaking != null) {
+        _isSpeaking = speaking;
+      }
+      if (waiting != null) {
+        _isWaitingForBot = waiting;
+      }
+      if (reply != null) {
+        _botReply = reply;
+      }
+    });
+  }
+
+  int _overclockThinkingStage(Duration elapsed) {
+    if (elapsed < _overclockWarmupThreshold) {
+      return 0;
+    }
+    if (elapsed < _overclockLongWaitThreshold) {
+      return 1;
+    }
+    return 2;
+  }
+
+  Duration _overclockThinkingInterval(Duration elapsed) {
+    switch (_overclockThinkingStage(elapsed)) {
+      case 0:
+        return const Duration(milliseconds: 520);
+      case 1:
+        return const Duration(milliseconds: 1100);
+      default:
+        return const Duration(milliseconds: 1900);
+    }
+  }
+
+  String _overclockWaitingReply(Duration elapsed) {
+    switch (_overclockThinkingStage(elapsed)) {
+      case 0:
+        return 'Activando modo overclock...';
+      case 1:
+        return 'Maika sigue procesando tu respuesta...';
+      default:
+        return 'Maika está pensando con calma...';
+    }
+  }
+
+  List<String> _buildOverclockThinkingSequenceForElapsed({
+    required String cue,
+    required Duration elapsed,
+  }) {
+    switch (_overclockThinkingStage(elapsed)) {
+      case 0:
+        return _buildThinkingSequence(
+          useOverclock: true,
+          anticipatedEmotion: 'neutral_cool',
+          isPrayerRequest: false,
+          cue: cue,
+        );
+      case 1:
+        switch (cue) {
+          case 'curiosity':
+            return const ['pensativa', 'asombrada', 'neutral_cool'];
+          case 'quiz':
+          case 'celebration':
+            return const ['pensativa', 'nerd', 'neutral_cool'];
+          case 'affection':
+            return const ['neutral_cool', 'feliz_1'];
+          case 'fallback':
+            return const ['pensativa', 'confundida'];
+          default:
+            return const ['pensativa', 'neutral_cool'];
+        }
+      default:
+        switch (cue) {
+          case 'fallback':
+            return const ['pensativa', 'confundida'];
+          case 'curiosity':
+            return const ['pensativa', 'asombrada'];
+          default:
+            return const ['pensativa', 'neutral_cool'];
+        }
+    }
+  }
+
+  void _startThinkingLoop({
+    required int runId,
+    required bool useOverclock,
+    required String anticipatedEmotion,
+    required bool isPrayerRequest,
+    required String cue,
+  }) {
+    final startedAt = DateTime.now();
+    var stage = -1;
+    var sequence = <String>[];
+    var index = 0;
+    var nextTransitionAt = startedAt;
+    var overclockWarmupCompleted = false;
+
+    _thinkingTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!_isAnimationActive(runId) || !_isWaitingForBot) {
+        _thinkingTimer?.cancel();
+        _thinkingTimer = null;
+        return;
+      }
+
+      final now = DateTime.now();
+      final elapsed = now.difference(startedAt);
+
+      if (useOverclock) {
+        final computedStage = _overclockThinkingStage(elapsed);
+        final newStage =
+            overclockWarmupCompleted && computedStage == 0 ? 1 : computedStage;
+        if (newStage != stage || sequence.isEmpty) {
+          stage = newStage;
+          sequence = _buildOverclockThinkingSequenceForElapsed(
+            cue: cue,
+            elapsed: stage == 1 && computedStage == 0
+                ? _overclockWarmupThreshold
+                : elapsed,
+          );
+          index = 0;
+          nextTransitionAt = now.add(
+            _overclockThinkingInterval(
+              stage == 1 && computedStage == 0
+                  ? _overclockWarmupThreshold
+                  : elapsed,
+            ),
+          );
+          setState(() {
+            _currentEmotion = sequence.first;
+            final waitingReply = _overclockWaitingReply(
+              stage == 1 && computedStage == 0
+                  ? _overclockWarmupThreshold
+                  : elapsed,
+            );
+            if (_botReply != waitingReply) {
+              _botReply = waitingReply;
+            }
+          });
+          return;
+        }
+
+        if (now.isBefore(nextTransitionAt) || sequence.length <= 1) {
+          return;
+        }
+
+        if (stage == 0 && index == sequence.length - 1) {
+          overclockWarmupCompleted = true;
+          nextTransitionAt = now;
+          return;
+        }
+
+        index = (index + 1) % sequence.length;
+        nextTransitionAt = now.add(_overclockThinkingInterval(elapsed));
+        setState(() {
+          _currentEmotion = sequence[index];
+        });
+        return;
+      }
+
+      if (sequence.isEmpty) {
+        sequence = _buildThinkingSequence(
+          useOverclock: useOverclock,
+          anticipatedEmotion: anticipatedEmotion,
+          isPrayerRequest: isPrayerRequest,
+          cue: cue,
+        );
+        if (sequence.length <= 1) {
+          _thinkingTimer?.cancel();
+          _thinkingTimer = null;
+          return;
+        }
+        nextTransitionAt = now.add(const Duration(milliseconds: 520));
+        return;
+      }
+
+      if (now.isBefore(nextTransitionAt)) {
+        return;
+      }
+
+      index = (index + 1) % sequence.length;
+      nextTransitionAt = now.add(const Duration(milliseconds: 520));
+      setState(() {
+        _currentEmotion = sequence[index];
+      });
+    });
+  }
+
+  Future<void> _playSequence({
+    required int runId,
+    required List<String> sequence,
+    required Duration stepDuration,
+    required bool speaking,
+  }) async {
+    final compacted = _compactSequence(sequence);
+    if (compacted.isEmpty) return;
+
+    for (var index = 0; index < compacted.length; index++) {
+      if (!_isAnimationActive(runId)) return;
+
+      await _setAvatarState(
+        emotion: compacted[index],
+        speaking: speaking,
+      );
+
+      if (index < compacted.length - 1) {
+        await Future.delayed(stepDuration);
+      }
+    }
+  }
+
+  List<String> _buildThinkingSequence({
+    required bool useOverclock,
+    required String anticipatedEmotion,
+    required bool isPrayerRequest,
+    required String cue,
+  }) {
+    if (useOverclock) {
+      switch (cue) {
+        case 'quiz':
+          return const ['neutral_cool', 'nerd', 'pensativa'];
+        case 'curiosity':
+          return const ['neutral_cool', 'asombrada', 'pensativa'];
+        case 'comfort':
+        case 'prayer':
+          return const ['neutral_cool', 'pensativa', 'triste_1'];
+        case 'affection':
+          return const ['neutral_cool', 'feliz_1', 'pensativa'];
+        case 'greeting':
+          return const ['neutral_cool', 'feliz_1', 'pensativa'];
+        case 'fallback':
+          return const ['pensativa', 'impactada', 'confundida'];
+        default:
+          return const ['neutral_cool', 'nerd', 'pensativa'];
+      }
+    }
+
+    if (isPrayerRequest) {
+      return const ['triste', 'pensativa', 'orando', 'pensativa'];
+    }
+
+    switch (cue) {
+      case 'quiz':
+        return const ['pensativa', 'orgullosa', 'pensativa'];
+      case 'curiosity':
+        return const ['sorprendida', 'pensativa', 'sorprendida'];
+      case 'comfort':
+        return const ['triste', 'pensativa', 'aliviada'];
+      case 'greeting':
+        return const ['feliz', 'pensativa', 'feliz'];
+      case 'affection':
+        return const ['sonrojada', 'picara_sonrojada', 'sonrojada'];
+      case 'devotional':
+        return const ['inspirada', 'pensativa', 'inspirada'];
+      case 'farewell':
+        return const ['feliz', 'sonrojada', 'feliz'];
+      case 'fallback':
+        return const ['dudando', 'pensativa', 'confundida'];
+    }
+
+    switch (anticipatedEmotion) {
+      case 'inspirada':
+        return const ['inspirada', 'pensativa', 'inspirada'];
+      case 'sonrojada':
+      case 'picara':
+      case 'picara_sonrojada':
+        return const ['sonrojada', 'picara', 'sonrojada'];
+      case 'nerviosa':
+      case 'muy_nerviosa':
+      case 'confundida':
+      case 'dudando':
+        return const ['dudando', 'pensativa', 'confundida'];
+      case 'triste':
+      case 'cansada':
+        return const ['triste', 'pensativa', 'triste'];
+      case 'orgullosa':
+      case 'feliz':
+        return const ['orgullosa', 'pensativa', 'feliz'];
+      case 'sorprendida':
+        return const ['sorprendida', 'pensativa', 'sorprendida'];
+      default:
+        return const ['pensativa', 'dudando', 'pensativa'];
+    }
+  }
+
+  List<String> _buildResponseSequence({
+    required bool useOverclock,
+    required String finalEmotion,
+    required bool holdPrayerPose,
+    required String cue,
+  }) {
+    if (useOverclock) {
+      switch (cue) {
+        case 'celebration':
+          return const ['feliz_1', 'feliz_2', 'orgullosa'];
+        case 'quiz':
+          return const ['nerd', 'feliz_1', 'orgullosa'];
+        case 'curiosity':
+          return const ['asombrada', 'impactada', 'neutral_cool'];
+        case 'comfort':
+          return const ['pensativa', 'triste_1', 'neutral_cool'];
+        case 'greeting':
+          return const ['feliz_1', 'feliz_2', 'neutral_cool'];
+        case 'affection':
+          return const ['feliz_1', 'feliz_2', 'neutral_cool'];
+        case 'farewell':
+          return const ['feliz_2', 'neutral_cool'];
+        case 'fallback':
+          return const ['impactada', 'confundida'];
+      }
+
+      switch (finalEmotion) {
+        case 'feliz':
+        case 'feliz_1':
+        case 'feliz_2':
+        case 'orgullosa':
+          return const ['feliz_1', 'feliz_2', 'orgullosa'];
+        case 'sorprendida':
+        case 'asombrada':
+          return const ['asombrada', 'impactada'];
+        case 'impactada':
+        case 'confundida':
+        case 'cofundida':
+          return const ['impactada', 'confundida'];
+        case 'triste':
+        case 'triste_1':
+        case 'llorando':
+        case 'derrotada':
+          return const ['triste_1', 'derrotada'];
+        case 'enojada':
+        case 'enojada_1':
+        case 'enojada_2':
+          return const ['enojada_1', 'enojada_2'];
+        case 'aburrida':
+          return const ['aburrida', 'neutral_cool'];
+        case 'nerd':
+        case 'pensativa':
+          return const ['nerd', 'pensativa'];
+        case 'neutral':
+        case 'neutral_cool':
+        default:
+          return const ['pensativa', 'neutral_cool'];
+      }
+    }
+
+    if (holdPrayerPose || finalEmotion == 'orando') {
+      return const ['pensativa', 'orando'];
+    }
+
+    switch (cue) {
+      case 'celebration':
+        return const ['feliz', 'feliz_logro', 'orgullosa'];
+      case 'quiz':
+        return const ['pensativa', 'feliz_logro', 'orgullosa'];
+      case 'curiosity':
+        return const ['sorprendida', 'pensativa', 'sorprendida'];
+      case 'comfort':
+        return const ['triste', 'aliviada'];
+      case 'greeting':
+        return const ['feliz', 'sonrojada'];
+      case 'affection':
+        return const ['sonrojada', 'picara_sonrojada', 'sonrojada'];
+      case 'devotional':
+        return const ['inspirada', 'pensativa', 'inspirada'];
+      case 'farewell':
+        return const ['feliz', 'sonrojada', 'neutral'];
+      case 'fallback':
+        return const ['dudando', 'confundida'];
+    }
+
+    switch (finalEmotion) {
+      case 'feliz_logro':
+        return const ['feliz', 'feliz_logro', 'orgullosa'];
+      case 'feliz':
+      case 'orgullosa':
+        return const ['feliz', 'orgullosa'];
+      case 'inspirada':
+        return const ['inspirada', 'pensativa', 'inspirada'];
+      case 'aliviada':
+        return const ['triste', 'aliviada'];
+      case 'triste':
+      case 'cansada':
+        return const ['pensativa', 'triste'];
+      case 'sorprendida':
+        return const ['sorprendida', 'pensativa'];
+      case 'sonrojada':
+      case 'picara_sonrojada':
+        return const ['sonrojada', 'picara_sonrojada'];
+      case 'picara':
+        return const ['picara', 'sonrojada'];
+      case 'nerviosa':
+      case 'muy_nerviosa':
+        return const ['nerviosa', 'pensativa'];
+      case 'confundida':
+      case 'dudando':
+        return const ['dudando', 'confundida'];
+      case 'aburrida':
+        return const ['aburrida', 'pensativa'];
+      case 'enojada':
+        return const ['enojada', 'pensativa'];
+      case 'neutral':
+      default:
+        return const ['pensativa', 'neutral'];
+    }
+  }
+
+  Future<void> _animateResponseFlow({
+    required int runId,
+    required bool useOverclock,
+    required String finalEmotion,
+    required bool holdPrayerPose,
+    required String cue,
+  }) async {
+    final responseSequence = _buildResponseSequence(
+      useOverclock: useOverclock,
+      finalEmotion: finalEmotion,
+      holdPrayerPose: holdPrayerPose,
+      cue: cue,
+    );
+
+    await _playSequence(
+      runId: runId,
+      sequence: responseSequence,
+      stepDuration: const Duration(milliseconds: 320),
+      speaking: true,
+    );
+
+    if (!_isAnimationActive(runId)) return;
+
+    await Future.delayed(
+      holdPrayerPose
+          ? const Duration(milliseconds: 1600)
+          : const Duration(milliseconds: 1200),
+    );
+
+    if (!_isAnimationActive(runId)) return;
+
+    if (holdPrayerPose) {
+      await _setAvatarState(
+        emotion: 'orando',
+        speaking: false,
+      );
+      return;
+    }
+
+    final restingEmotion = useOverclock && finalEmotion == 'confundida'
+        ? 'confundida'
+        : _restingEmotionForMode(useOverclock);
+
+    await _setAvatarState(
+      emotion: restingEmotion,
+      speaking: false,
+    );
   }
 
   String _emotionForUserText(String text) {
@@ -156,8 +808,7 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
     }
 
     // Usuario está reflexionando / pensando
-    if (lower.contains('pienso que') ||
-        lower.contains('he estado pensando')) {
+    if (lower.contains('pienso que') || lower.contains('he estado pensando')) {
       return 'pensativa';
     }
 
@@ -192,30 +843,111 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
       return;
     }
 
+    final useOverclock = _isOverclockEnabled;
+    final isPrayerRequest = !useOverclock && _isPrayerRequest(message);
+    final userCue = _conversationCueForText(message);
+    final anticipatedEmotion = useOverclock
+        ? _restingEmotionForMode(true)
+        : _emotionForUserText(message);
+    final runId = _startAnimationRun();
+
     _ctrl.clear();
     setState(() {
       _isWaitingForBot = true;
       _isSpeaking = false;
-      _currentEmotion = _emotionForUserText(message);
-      _botReply = 'Estoy pensando en la mejor respuesta...';
+      _currentEmotion = anticipatedEmotion;
+      _botReply = useOverclock
+          ? 'Activando modo overclock...'
+          : 'Estoy pensando en la mejor respuesta...';
     });
+    _startThinkingLoop(
+      runId: runId,
+      useOverclock: useOverclock,
+      anticipatedEmotion: anticipatedEmotion,
+      isPrayerRequest: isPrayerRequest,
+      cue: userCue,
+    );
 
-    final response = await _rasa.sendMessage(message);
+    try {
+      if (useOverclock) {
+        final response = await _overclock.sendMessage(message);
 
-    if (!mounted) return;
+        if (!_isAnimationActive(runId)) return;
 
-    setState(() {
-      _isWaitingForBot = false;
-      _botReply = response.text;
-      _currentEmotion = response.emotion;
-      _isSpeaking = true;
-    });
+        _thinkingTimer?.cancel();
+        _thinkingTimer = null;
+
+        await _setAvatarState(
+          emotion: _currentEmotion,
+          waiting: false,
+          speaking: true,
+          reply: response.text,
+        );
+        final responseCue = _resolveResponseCue(
+          userCue: userCue,
+          responseText: response.text,
+          finalEmotion: response.emotion,
+          holdPrayerPose: false,
+        );
+        await _animateResponseFlow(
+          runId: runId,
+          useOverclock: true,
+          finalEmotion: response.emotion,
+          holdPrayerPose: false,
+          cue: responseCue,
+        );
+      } else {
+        final response = await _rasa.sendMessage(message);
+
+        if (!_isAnimationActive(runId)) return;
+
+        _thinkingTimer?.cancel();
+        _thinkingTimer = null;
+
+        final holdPrayerPose = isPrayerRequest || response.emotion == 'orando';
+        await _setAvatarState(
+          emotion: _currentEmotion,
+          waiting: false,
+          speaking: true,
+          reply: response.text,
+        );
+        final responseCue = _resolveResponseCue(
+          userCue: userCue,
+          responseText: response.text,
+          finalEmotion: holdPrayerPose ? 'orando' : response.emotion,
+          holdPrayerPose: holdPrayerPose,
+        );
+        await _animateResponseFlow(
+          runId: runId,
+          useOverclock: false,
+          finalEmotion: holdPrayerPose ? 'orando' : response.emotion,
+          holdPrayerPose: holdPrayerPose,
+          cue: responseCue,
+        );
+      }
+    } catch (error) {
+      _thinkingTimer?.cancel();
+      _thinkingTimer = null;
+      if (!_isAnimationActive(runId)) return;
+
+      await _setAvatarState(
+        emotion: 'confundida',
+        waiting: false,
+        speaking: true,
+        reply: useOverclock
+            ? 'Lo siento, el modo overclock falló al responder: $error'
+            : 'Lo siento, Rasa falló al responder: $error',
+      );
+      await _animateResponseFlow(
+        runId: runId,
+        useOverclock: useOverclock,
+        finalEmotion: 'confundida',
+        holdPrayerPose: false,
+        cue: 'fallback',
+      );
+    }
 
     // Pequeña animación de "hablar"
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      setState(() => _isSpeaking = false);
-    }
   }
 
   @override
@@ -240,6 +972,28 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
             );
           },
         ),
+        actions: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Overclock',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white70,
+                    ),
+              ),
+              Switch(
+                value: _isOverclockEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _isOverclockEnabled = value;
+                    _currentEmotion = 'neutral';
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -263,6 +1017,7 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
                           AvatarWidget(
                             isSpeaking: _isSpeaking,
                             emotion: _currentEmotion,
+                            useOverclockAssets: _isOverclockEnabled,
                           ),
                           const SizedBox(height: 12),
                           FadeTransition(
@@ -279,8 +1034,8 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.15),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.15),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -324,32 +1079,80 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _ctrl,
-                        decoration: InputDecoration(
-                          hintText: 'Escribe tu mensaje...',
-                          filled: true,
-                          fillColor: surface,
-                          border: OutlineInputBorder(
+                      child: _buildNeonBorder(
+                        borderRadius: 30,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: surface,
                             borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 20,
-                            vertical: 12,
+                            vertical: 8,
+                          ),
+                          child: TextField(
+                            controller: _ctrl,
+                            decoration: const InputDecoration(
+                              hintText: 'Escribe tu mensaje...',
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 6,
+                              ),
+                            ),
+                            onSubmitted: (value) {
+                              if (_isComposing && !_isWaitingForBot) {
+                                _send(value);
+                              }
+                            },
                           ),
                         ),
-                        onSubmitted: _send,
                       ),
                     ),
                     const SizedBox(width: 10),
                     ScaleTransition(
                       scale: _sendButtonAnimation,
-                      child: CircleAvatar(
-                        backgroundColor: scheme.primary,
-                        child: IconButton(
-                          icon: const Icon(Icons.send, color: Colors.white),
-                          onPressed: () => _send(_ctrl.text),
+                      child: GestureDetector(
+                        onTap: (_isComposing && !_isWaitingForBot)
+                            ? () => _send(_ctrl.text)
+                            : null,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 48,
+                          width: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: _isComposing && !_isWaitingForBot
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF6B46C1),
+                                      Color(0xFF8B5CF6),
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.1),
+                                      Colors.white.withValues(alpha: 0.05),
+                                    ],
+                                  ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7B4DFF).withValues(
+                                  alpha: (_isComposing && !_isWaitingForBot)
+                                      ? 0.6
+                                      : 0.0,
+                                ),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isWaitingForBot
+                                ? Icons.hourglass_top
+                                : Icons.send_rounded,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -361,5 +1164,131 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
         },
       ),
     );
+  }
+}
+
+Widget _buildNeonBorder({
+  required double borderRadius,
+  required Widget child,
+}) {
+  // Este helper simple se basa en un AnimationController global
+  // almacenado en un InheritedWidget implícito: usamos una instancia
+  // local de AnimationController para el borde del input.
+  return _NeonBorderWrapper(
+    borderRadius: borderRadius,
+    child: child,
+  );
+}
+
+class _NeonBorderWrapper extends StatefulWidget {
+  const _NeonBorderWrapper({
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final double borderRadius;
+  final Widget child;
+
+  @override
+  State<_NeonBorderWrapper> createState() => _NeonBorderWrapperState();
+}
+
+class _NeonBorderWrapperState extends State<_NeonBorderWrapper>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: NeonGlowBorderPainter(
+                  colors: _neonBorderColors,
+                  rotationAngle: _controller.value * 2 * math.pi,
+                  borderWidth: 3.0,
+                  glowWidth: 12.0,
+                  borderRadius: widget.borderRadius,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.all(3.0),
+              child: widget.child,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class NeonGlowBorderPainter extends CustomPainter {
+  final List<Color> colors;
+  final double rotationAngle;
+  final double borderWidth;
+  final double glowWidth;
+  final double borderRadius;
+
+  NeonGlowBorderPainter({
+    required this.colors,
+    required this.rotationAngle,
+    required this.borderWidth,
+    required this.glowWidth,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(borderRadius),
+    );
+
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = glowWidth
+      ..maskFilter = MaskFilter.blur(BlurStyle.outer, glowWidth / 2);
+
+    glowPaint.color = colors.first.withOpacity(0.25);
+    canvas.drawRRect(rrect, glowPaint);
+
+    final borderGradient = SweepGradient(
+      center: Alignment.center,
+      colors: colors,
+      stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+      transform: GradientRotation(rotationAngle),
+    );
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth
+      ..shader = borderGradient.createShader(Offset.zero & size);
+
+    canvas.drawRRect(rrect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant NeonGlowBorderPainter oldDelegate) {
+    return oldDelegate.rotationAngle != rotationAngle ||
+        oldDelegate.borderRadius != borderRadius;
   }
 }

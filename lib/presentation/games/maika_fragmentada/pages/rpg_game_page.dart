@@ -33,12 +33,15 @@ class RpgGamePage extends StatefulWidget {
 }
 
 class _RpgGamePageState extends State<RpgGamePage> {
+  static const String _gameKey = 'maika_fragmentada';
   late final RpgGameBloc bloc;
   late RpgGameWorld game;
   bool _gameCreated = false;
   VerseFragment? currentVerse;
   Timer? verseTimer;
   late final DateTime _startTime;
+  late final String _sessionKey;
+  int _roundIndex = 1;
   bool _sessionLogged = false;
   int _fragmentsCollected = 0;
 
@@ -46,6 +49,7 @@ class _RpgGamePageState extends State<RpgGamePage> {
   void initState() {
     super.initState();
     _startTime = DateTime.now();
+    _sessionKey = _startTime.millisecondsSinceEpoch.toString();
     bloc = RpgGameBloc(loadVerses: widget.loadVerses)..add(LoadGame());
   }
 
@@ -70,7 +74,9 @@ class _RpgGamePageState extends State<RpgGamePage> {
     AnalyticsService().logEvent(
       'game_session_finished',
       params: {
-        'game': 'maika_fragmentada',
+        'game': _gameKey,
+        'game_key': _gameKey,
+        'session_key': _sessionKey,
         'seconds_played': seconds,
         'fragments_collected': _fragmentsCollected,
       },
@@ -123,7 +129,9 @@ class _RpgGamePageState extends State<RpgGamePage> {
             AnalyticsService().logEvent(
               'game_finished',
               params: {
-                'game': 'maika_fragmentada',
+                'game': _gameKey,
+                'game_key': _gameKey,
+                'round_key': '$_sessionKey:$_roundIndex',
                 'completed': !state.isDeath,
                 'fragments_collected': _fragmentsCollected,
               },
@@ -184,6 +192,7 @@ class _RpgGamePageState extends State<RpgGamePage> {
                     onPlayAgain: () {
                       setState(() {
                         _gameCreated = false;
+                        _roundIndex++;
                       });
                       bloc.add(LoadGame());
                     },
@@ -340,4 +349,3 @@ class _VictoryOverlay extends StatelessWidget {
     );
   }
 }
-

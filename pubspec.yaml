@@ -64,6 +64,7 @@ dependencies:
   path_provider: ^2.1.2
   file_selector: ^1.0.3
   file_saver: ^0.2.12
+  video_player: ^2.8.6
 
   # Mini-games (Flame engine)
   flame: ^1.17.0
@@ -93,12 +94,13 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
   assets:
     - assets/audio/
     - maika.png
     - assets/images/
     - assets/emociones/
+    - assets/emociones_overclock/
+    - assets/animations/loading.mp4
     - assets/tiles/
     - assets/games/fragmentada/images/
     - assets/games/fragmentada/tiles/

@@ -6,10 +6,16 @@ import '../../widgets/glass_card.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  Future<void> _openUrl(String url) async {
+  Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo abrir el enlace. '
+              'Revisa que tengas un navegador instalado.'),
+        ),
+      );
     }
   }
 
@@ -145,8 +151,7 @@ class AboutScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _openUrl(
-                                'https://github.com/joshuaMBux',
-                              ),
+                                  context, 'https://github.com/joshuaMBux'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: BorderSide(
@@ -166,6 +171,7 @@ class AboutScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _openUrl(
+                                context,
                                 'https://www.linkedin.com/in/josue-moya-a94299322',
                               ),
                               style: OutlinedButton.styleFrom(
