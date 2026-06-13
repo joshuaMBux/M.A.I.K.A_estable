@@ -62,6 +62,12 @@ Cuando las agregues, este bloque ya las mostrara automaticamente:
 
 La forma recomendada de descargar la app es desde la seccion `Releases` de este repositorio.
 
+Enlace recomendado:
+
+```text
+https://github.com/joshuaMBux/M.A.I.K.A_estable/releases/latest
+```
+
 Archivo esperado:
 
 ```text
@@ -72,6 +78,12 @@ Ruta del build local:
 
 ```text
 build/app/outputs/flutter-apk/app-release.apk
+```
+
+Titulo sugerido para la release:
+
+```text
+M.A.I.K.A v1.0.0
 ```
 
 ## Ejecutar El Proyecto
