@@ -1,96 +1,204 @@
-# M.A.I.K.A - Asistente Bíblico Personal
+# M.A.I.K.A
 
-**M.A.I.K.A** (Asistente Inteligente de Conocimiento Bíblico) es una aplicación móvil desarrollada en **Flutter** que funciona como tu asistente bíblico personal con inteligencia artificial. El nombre es un acrónimo que representa el enfoque en la Biblia como guía espiritual.
+> Aplicacion movil en Flutter para acompanamiento biblico, chat con avatar, lectura, devocionales y minijuegos.
 
-## Características
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](#)
+[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](#)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](#)
+[![Estado](https://img.shields.io/badge/Estado-Activo-6B46C1)](#)
 
-- **Chat con IA**: Conversa con Maika sobre temas bíblicos, oraciones, devocionales y más
-- **Avatar Interactivo**: Un avatar anime 2D que responde con diferentes emociones
-- **Plan de Lectura**: Planes de lectura bíblica diarios con seguimiento de progreso
-- **Devocionales**: Devocionales diarios basados en la Palabra de Dios
-- **Favoritos**: Guarda versículos y mensajes importantes
-- **Explorar**: Explora la Biblia por libros, categorías y versículos
-- **Audiolibro**: Reproduce la Biblia en audio (módulos de audio)
-- **Perfil de Usuario**: Configura idioma, notificaciones, tamaño de texto y más
-- **Modo Oscuro**: Soporte completo para tema claro y oscuro
-- **Juegos**: Minijuegos para aprender la Biblia
-- **Gamificación**: Sistema de recompensas y logros
-- **Avatar Overclock**: Emociones mejoradas y animaciones de carga
-- **Backend Node.js**: Servidor para funcionalidades extendidas
+M.A.I.K.A es la app principal de este repositorio. Aqui vive el proyecto Flutter que genera el APK para usuarios finales.
 
-## Tecnologías
+Los repos auxiliares o carpetas tecnicas como `Maika_beta_1` y `maika_avatar` no forman parte del build principal que se distribuye desde este repo.
 
-- **Flutter**: Framework principal (Dart)
-- **Rasa NLU**: Servicio de procesamiento de lenguaje natural
-- **SQLite**: Base de datos local
-- **BLoC**: Gestión de estado
-- **GetIt**: Inyección de dependencias
-- **Share Plus**: Compartir contenido
-- **Node.js**: Backend para servicios extendidos
-- **OpenRouter**: Integración con modelos de IA alternativos
+## Vista Rapida
 
-## Estructura del Proyecto
+- Chat biblico con Maika
+- Avatar emocional en tiempo real
+- Devocionales y plan de lectura
+- Favoritos de versiculos y conversaciones
+- Audio Biblia
+- Minijuegos y gamificacion
+- Tema claro y oscuro
+- Perfil y ajustes de usuario
 
-```
-lib/
-├── core/                  # Configuraciones, constantes, temas
-├── data/                  # Repositorios, modelos, fuentes de datos
-├── domain/                # Entidades, repositorios (interfaces), casos de uso
-├── presentation/          # UI, BLoCs, pantallas, widgets
-└── main.dart             # Punto de entrada
+## Capturas
+
+Pon tus imagenes en:
+
+```text
+docs/images/
 ```
 
-## Ejecutar en Desarrollo
+Nombres recomendados:
 
-```bash
-# Instalar dependencias
+- `cover.png`
+- `home.png`
+- `chat.png`
+- `avatar-chat.png`
+- `avatar-cha overclok.png`
+- `explore.png`
+- `game.png`
+- `game biblia fragmentada.png`
+- `profile.png`
+
+Cuando las agregues, este bloque ya las mostrara automaticamente:
+
+![Portada](docs/images/cover.png)
+
+| Inicio | Chat | Explorar |
+|---|---|---|
+| ![Inicio](docs/images/home.png) | ![Chat](docs/images/chat.png) | ![Explorar](docs/images/explore.png) |
+
+| Avatar | Avatar Overclock | Perfil |
+|---|---|---|
+| ![Avatar](docs/images/avatar-chat.png) | ![Avatar Overclock](docs/images/avatar-cha%20overclok.png) | ![Perfil](docs/images/profile.png) |
+
+| Juegos | Biblia Fragmentada |
+|---|---|
+| ![Juegos](docs/images/game.png) | ![Biblia Fragmentada](docs/images/game%20biblia%20fragmentada.png) |
+
+## Descargar APK
+
+La forma recomendada de descargar la app es desde la seccion `Releases` de este repositorio.
+
+Archivo esperado:
+
+```text
+app-release.apk
+```
+
+Ruta del build local:
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+## Ejecutar El Proyecto
+
+### Desarrollo
+
+```powershell
 flutter pub get
-
-# Ejecutar en emulador/dispositivo
 flutter run
+```
 
-# Build para Android
+### APK debug
+
+```powershell
 flutter build apk --debug
 ```
 
-## Configuración de Rasa
+### APK release
 
-Para el chat con IA, necesitas un servidor Rasa ejecutándose. Configura la URL en `lib/core/constants/rasa_config.dart`:
+```powershell
+flutter clean
+flutter pub get
+flutter build apk --release
+```
 
-- Emulador Android: `http://10.0.2.2:5005/webhooks/rest/webhook`
-- iOS Simulator: `http://127.0.0.1:5005/webhooks/rest/webhook`
-- Docker: `http://localhost:5005/webhooks/rest/webhook`
+## Requisitos
 
-## Emociones del Avatar
+- Flutter 3.x
+- Dart 3.x
+- Android Studio o Android SDK
+- Java 17
 
-El avatar soporta múltiples emociones que cambian según el contexto de la conversación:
-- neutral, feliz, triste, nerviosa, sorprendida
-- inspirada, pensativa, sonrojada, aliviada
-- cansada, aburrida, orgullosa, picara, bufona
-- enojada, dudando, orando, feliz_logro
-- **Emociones Overclock**: Versiones mejoradas con más expresividad
-- **Animaciones de carga**: Animaciones MP4 para transiciones suaves
+## Modulos Principales
 
-## Últimas Actualizaciones
+### Chat y avatar
 
-### Mejoras Implementadas:
-- **Sistema de Gamificación**: Modelos y repositorios para logros y recompensas
-- **Avatar Overclock**: Servicio mejorado con emociones ampliadas
-- **Backend Node.js**: Servidor para funcionalidades extendidas
-- **Integración OpenRouter**: Configuración para modelos de IA alternativos
-- **Animaciones MP4**: Sistema de carga visual mejorado
-- **Refactorización de Repositorios**: Mejoras en favoritos, notas y planes de lectura
-- **Optimización de Base de Datos**: Mejoras en `database_helper.dart`
-- **Servicio de Analytics**: Seguimiento mejorado de uso
-- **Pantallas de Perfil**: Actualizaciones en UI de perfil y about
+- Chat biblico con respuestas contextuales
+- Avatar emocional con variantes normales y overclock
+- Integracion con Rasa y backend extendido
 
-### Nuevas Características:
-- Emociones Overclock con mayor expresividad
-- Sistema de logros y recompensas
-- Backend para servicios extendidos
-- Animaciones de carga personalizadas
-- Integración con múltiples proveedores de IA
+Archivos clave:
+
+- `lib/presentation/pages/chat/chat_screen.dart`
+- `lib/presentation/pages/chat/avatar_chat_screen.dart`
+- `lib/presentation/pages/chat/avatar_widget.dart`
+
+### Lectura y contenido biblico
+
+- Exploracion de versiculos
+- Favoritos
+- Devocionales
+- Plan de lectura
+
+Archivos clave:
+
+- `lib/presentation/pages/explore/explore_screen.dart`
+- `lib/presentation/pages/devotional/devotional_screen.dart`
+- `lib/presentation/pages/reading_plan/reading_plan_screen.dart`
+
+### Juegos
+
+- Pantalla de minijuegos
+- Estadisticas
+- Juego principal "Maika y la Biblia Fragmentada"
+
+Archivos clave:
+
+- `lib/presentation/pages/games/games_screen.dart`
+- `lib/presentation/pages/games/game_stats_screen.dart`
+- `lib/presentation/games/maika_fragmentada/`
+
+## Stack Tecnologico
+
+- Flutter
+- Dart
+- flutter_bloc
+- SQLite
+- shared_preferences
+- Flame
+- Rasa
+- OpenRouter backend
+
+## Estructura Del Proyecto
+
+```text
+lib/
+  core/           configuracion, servicios, tema, utilidades
+  data/           modelos, repositorios y data sources
+  domain/         entidades y casos de uso
+  presentation/   UI, blocs, widgets, juegos y pantallas
+  main.dart       punto de entrada
+```
+
+## Backend Y Configuracion
+
+Algunas funciones dependen de servicios externos:
+
+- Rasa: `lib/core/constants/rasa_config.dart`
+- Overclock backend: `lib/core/constants/openrouter_backend_config.dart`
+
+Si esos servicios no estan disponibles, la app puede seguir funcionando parcialmente, pero el chat avanzado no respondera igual que en el entorno completo.
+
+## Tema Visual
+
+La app incluye soporte para tema claro y oscuro en la mayor parte de las pantallas principales.
+
+Archivos clave:
+
+- `lib/core/theme/app_theme.dart`
+- `lib/core/theme/theme_extensions.dart`
+- `lib/presentation/blocs/theme/theme_cubit.dart`
+
+## Estado Del Proyecto
+
+Este repositorio esta orientado a:
+
+- uso academico
+- prototipado funcional
+- iteracion rapida del producto
+
+Antes de publicarlo en una tienda, conviene revisar:
+
+- firma release propia
+- endpoints productivos
+- pruebas finales
+- limpieza de configuraciones locales
 
 ## Licencia
 
-Este proyecto es para fines educativos y de investigación.
+Proyecto de uso educativo y de investigacion.
