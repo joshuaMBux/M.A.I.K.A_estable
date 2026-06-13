@@ -101,6 +101,20 @@ class RewardGrantResult {
   });
 }
 
+class FeatureUnlockResult {
+  final bool isUnlocked;
+  final bool purchasedNow;
+  final bool insufficientCoins;
+  final int remainingCoins;
+
+  const FeatureUnlockResult({
+    required this.isUnlocked,
+    required this.purchasedNow,
+    required this.insufficientCoins,
+    required this.remainingCoins,
+  });
+}
+
 class RewardRule {
   final String actionType;
   final int xp;
@@ -114,12 +128,14 @@ class RewardRule {
 }
 
 class GamificationCatalog {
+  static const String overclockFeatureKey = 'avatar_overclock';
   static const String totalRewardsMetric = 'total_rewards';
   static const String favoriteVerseMetric = 'favorite_verse';
   static const String reflectionSavedMetric = 'reflection_saved';
   static const String readingDayMetric = 'reading_day_completed';
   static const String minigameSessionMetric = 'minigame_session';
   static const String minigameVictoryMetric = 'minigame_victory';
+  static const String featureUnlockAction = 'feature_unlock';
 
   static const RewardRule minigameSessionReward = RewardRule(
     actionType: minigameSessionMetric,

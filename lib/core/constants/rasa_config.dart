@@ -6,7 +6,7 @@ class RasaConfig {
   static const String localDesktopUrl =
       'http://127.0.0.1:5005/webhooks/rest/webhook';
   static const String androidEmulatorUrl =
-      'http://192.168.0.10:5005/webhooks/rest/webhook';
+      'http://192.168.0.11:5005/webhooks/rest/webhook';
   static const String iosSimulatorUrl =
       'http://127.0.0.1:5005/webhooks/rest/webhook';
   static const String dockerRasaUrl =

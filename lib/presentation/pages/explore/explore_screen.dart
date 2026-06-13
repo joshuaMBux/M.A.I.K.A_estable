@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/di/injection_container.dart' as di;
+import '../../../core/theme/theme_extensions.dart';
 import '../../../data/repositories/favorito_repository.dart';
 import '../../../domain/repositories/verse_repository.dart';
 
@@ -197,18 +198,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       body: Stack(
         children: [
-          // Fondo con gradiente sutil
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
 
@@ -223,10 +221,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: scheme.overlayOnSurface(0.1, lightAlpha: 0.04),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: scheme.borderWithOverlay(0.2, lightAlpha: 0.08),
                         width: 1,
                       ),
                     ),
@@ -252,10 +250,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Explorar',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: scheme.textPrimary,
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -263,7 +261,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               Text(
                                 'Descubre versículos por categoría',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: scheme.textSecondary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -279,13 +277,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed: _onLoadChapterPressed,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.menu_book,
-                        color: Colors.white,
+                        color: scheme.textPrimary,
                       ),
-                      label: const Text(
+                      label: Text(
                         'Cargar capitulo (API)',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: scheme.textPrimary),
                       ),
                     ),
                   ),
@@ -310,33 +308,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   // Barra de búsqueda
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: scheme.overlayOnSurface(0.1, lightAlpha: 0.04),
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: scheme.borderWithOverlay(0.2, lightAlpha: 0.08),
                         width: 1,
                       ),
                     ),
                     child: TextField(
                       key: const ValueKey('search_bible_verses'),
                       controller: _searchController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: scheme.textPrimary),
                       autofillHints: const [AutofillHints.name],
                       decoration: InputDecoration(
                         hintText: 'Buscar versículos...',
                         hintStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: scheme.textSecondary,
                         ),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: scheme.textSecondary,
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
                             Icons.clear,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: scheme.textSecondary,
                           ),
-                          onPressed: () => _searchController.clear(),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
@@ -379,13 +382,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 color:
                                     isSelected
                                         ? const Color(0xFF6B46C1)
-                                        : Colors.white.withValues(alpha: 0.1),
+                                        : scheme.overlayOnSurface(
+                                            0.1,
+                                            lightAlpha: 0.04,
+                                          ),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color:
                                       isSelected
                                           ? const Color(0xFF6B46C1)
-                                          : Colors.white.withValues(alpha: 0.2),
+                                          : scheme.borderWithOverlay(
+                                              0.2,
+                                              lightAlpha: 0.08,
+                                            ),
                                   width: 1,
                                 ),
                               ),
@@ -395,7 +404,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   color:
                                       isSelected
                                           ? Colors.white
-                                          : Colors.white.withValues(alpha: 0.8),
+                                          : scheme.textPrimary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -419,15 +428,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   Icon(
                                     Icons.search_off,
                                     size: 64,
-                                    color: Colors.white.withValues(alpha: 0.3),
+                                    color: scheme.textSecondary,
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     'No se encontraron versículos',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      color: scheme.textSecondary,
                                       fontSize: 16,
                                     ),
                                   ),
@@ -464,19 +471,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
     Map<String, String> verse,
     bool isFavorite,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: scheme.overlayOnSurface(0.1, lightAlpha: 0.04),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: scheme.borderWithOverlay(0.2, lightAlpha: 0.08),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: scheme.shadowWithOverlay(0.1, lightAlpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -514,7 +523,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 width: 35,
                 height: 35,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: scheme.overlayOnSurface(0.1, lightAlpha: 0.05),
                   borderRadius: BorderRadius.circular(17.5),
                 ),
                 child: IconButton(
@@ -524,7 +533,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     color:
                         isFavorite
                             ? const Color(0xFFEC4899)
-                            : Colors.white.withValues(alpha: 0.7),
+                            : scheme.textSecondary,
                     size: 18,
                   ),
                   padding: EdgeInsets.zero,
@@ -536,7 +545,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Text(
             verse['text']!,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: scheme.textPrimary,
               fontSize: 14,
               height: 1.5,
             ),
@@ -563,19 +572,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     await showDialog<void>(
       context: context,
       builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+
         return AlertDialog(
-          title: const Text('Cargar capitulo'),
+          backgroundColor: scheme.surfaceContainerHigh,
+          title: Text(
+            'Cargar capitulo',
+            style: TextStyle(color: scheme.textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: bookController,
+                style: TextStyle(color: scheme.textPrimary),
                 decoration: const InputDecoration(
                   labelText: 'Libro (ej. Juan)',
                 ),
               ),
               TextField(
                 controller: chapterController,
+                style: TextStyle(color: scheme.textPrimary),
                 decoration: const InputDecoration(
                   labelText: 'Capitulo (numero)',
                 ),

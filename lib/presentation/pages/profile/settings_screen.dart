@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/theme/theme_extensions.dart';
 import '../../../domain/entities/user_settings.dart';
 import '../../blocs/settings/settings_cubit.dart';
 import '../../widgets/glass_card.dart';
@@ -10,8 +11,10 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -20,14 +23,9 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Fondo degradado coherente con la pantalla de perfil.
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
           BlocBuilder<SettingsCubit, SettingsState>(
@@ -49,12 +47,12 @@ class SettingsScreen extends StatelessWidget {
                             height: 40,
                             decoration: BoxDecoration(
                               color: const Color(0xFF6B46C1)
-                                  .withValues(alpha: 0.3),
+                                  .withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
                               Icons.tune,
-                              color: Colors.white,
+                              color: Color(0xFF6B46C1),
                               size: 22,
                             ),
                           ),
@@ -66,16 +64,14 @@ class SettingsScreen extends StatelessWidget {
                                 Text(
                                   'Personalización',
                                   style: textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                                    color: scheme.textPrimary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 Text(
                                   'Tema, idioma y tamaño de texto',
                                   style: textTheme.bodySmall?.copyWith(
-                                    color: Colors.white.withValues(
-                                      alpha: 0.8,
-                                    ),
+                                    color: scheme.textSecondary,
                                   ),
                                 ),
                               ],
@@ -93,7 +89,7 @@ class SettingsScreen extends StatelessWidget {
                           Text(
                             'Apariencia',
                             style: textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
+                              color: scheme.textPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -132,14 +128,14 @@ class SettingsScreen extends StatelessWidget {
                           Text(
                             'Idioma',
                             style: textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
+                              color: scheme.textPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonHideUnderline(
                             child: DropdownButton<AppLanguage>(
-                              dropdownColor: const Color(0xFF151A33),
+                              dropdownColor: scheme.surfaceContainerHigh,
                               value: settings.language,
                               onChanged: (value) {
                                 if (value != null) {
@@ -176,7 +172,7 @@ class SettingsScreen extends StatelessWidget {
                           Text(
                             'Tamaño de texto',
                             style: textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
+                              color: scheme.textPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -196,7 +192,7 @@ class SettingsScreen extends StatelessWidget {
                             'Escala actual: '
                             '${settings.textScale.toStringAsFixed(2)}',
                             style: textTheme.bodySmall?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: scheme.textSecondary,
                             ),
                           ),
                         ],

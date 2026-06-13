@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeCubit extends Cubit<ThemeMode> {
-  ThemeCubit() : super(ThemeMode.dark) {
+  ThemeCubit() : super(ThemeMode.light) {
     _loadTheme();
   }
 
@@ -26,7 +26,7 @@ class ThemeCubit extends Cubit<ThemeMode> {
     if (stored == null) return;
     final mode = ThemeMode.values.firstWhere(
       (element) => element.name == stored,
-      orElse: () => ThemeMode.dark,
+      orElse: () => ThemeMode.light,
     );
     emit(mode);
   }

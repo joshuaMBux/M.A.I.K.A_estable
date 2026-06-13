@@ -1,8 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/di/injection_container.dart' as di;
+import '../../../data/models/gamification_models.dart';
+import '../../../data/repositories/gamification_repository.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import 'avatar_rasa_service.dart';
 import 'avatar_widget.dart';
 import 'avatar_overclock_service.dart';
@@ -25,7 +31,8 @@ class AvatarChatScreen extends StatefulWidget {
 }
 
 class _AvatarChatScreenState extends State<AvatarChatScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  static const int _overclockUnlockCost = 30;
   static const Duration _overclockWarmupThreshold =
       Duration(milliseconds: 1800);
   static const Duration _overclockLongWaitThreshold = Duration(seconds: 6);
@@ -33,17 +40,24 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
   final AvatarRasaService _rasa = AvatarRasaService();
   final AvatarOverclockService _overclock = AvatarOverclockService();
 
+  int _currentUserId = 0;
+  int _availableCoins = 0;
+  bool _isOverclockUnlocked = false;
+  bool _isOverclockAccessReady = false;
+  bool _isUnlockingOverclock = false;
   bool _isOverclockEnabled = false;
   bool _isSpeaking = false;
   bool _isWaitingForBot = false;
   bool _isComposing = false;
   String _currentEmotion = 'neutral';
   final TextEditingController _ctrl = TextEditingController();
-  String _botReply = '¡Hola! Soy tu avatar anime 🌸\n¿En qué te ayudo hoy?';
+  String _botReply = 'Hola, soy M.A.I.K.A.\n¿En qué te ayudo hoy?';
 
   late final AnimationController _animController;
+  late final AnimationController _overclockPulseController;
   late final Animation<double> _titleAnimation;
   late final Animation<double> _cardAnimation;
+  late final Animation<double> _overclockPulseAnimation;
   late final Animation<double> _sendButtonAnimation;
   Timer? _thinkingTimer;
   int _animationRunId = 0;
@@ -67,8 +81,17 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
       parent: _animController,
       curve: const Interval(0.4, 1.0, curve: Curves.easeOutBack),
     );
+    _overclockPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _overclockPulseAnimation = CurvedAnimation(
+      parent: _overclockPulseController,
+      curve: Curves.easeInOut,
+    );
     _ctrl.addListener(_handleInputChanged);
     _animController.forward();
+    _loadOverclockAccess();
   }
 
   @override
@@ -76,8 +99,227 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
     _thinkingTimer?.cancel();
     _ctrl.removeListener(_handleInputChanged);
     _ctrl.dispose();
+    _overclockPulseController.dispose();
     _animController.dispose();
     super.dispose();
+  }
+
+  void _syncOverclockPulse(bool isActive) {
+    if (isActive) {
+      if (!_overclockPulseController.isAnimating) {
+        _overclockPulseController.repeat(reverse: true);
+      }
+      return;
+    }
+
+    _overclockPulseController.stop();
+    _overclockPulseController.value = 0;
+  }
+
+  String _overclockEnabledPrefKey(int userId) =>
+      'avatar_overclock_enabled_$userId';
+
+  Future<int> _readCurrentUserId() async {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess) {
+      return int.tryParse(authState.user.id) ?? 0;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('user_id') ?? 0;
+  }
+
+  Future<void> _loadOverclockAccess() async {
+    final userId = await _readCurrentUserId();
+    if (!di.sl.isRegistered<GamificationRepository>() || userId <= 0) {
+      if (!mounted) return;
+      setState(() {
+        _currentUserId = userId;
+        _isOverclockUnlocked = true;
+        _isOverclockAccessReady = true;
+      });
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final repo = di.sl<GamificationRepository>();
+    final dashboard = await repo.getDashboard(userId);
+    final isUnlocked = await repo.isFeatureUnlocked(
+      userId: userId,
+      featureKey: GamificationCatalog.overclockFeatureKey,
+    );
+    final isEnabled =
+        isUnlocked && (prefs.getBool(_overclockEnabledPrefKey(userId)) ?? false);
+
+    if (!mounted) return;
+    setState(() {
+      _currentUserId = userId;
+      _availableCoins = dashboard.progress.coins;
+      _isOverclockUnlocked = isUnlocked;
+      _isOverclockEnabled = isEnabled;
+      _isOverclockAccessReady = true;
+      _currentEmotion = _restingEmotionForMode(isEnabled);
+    });
+    _syncOverclockPulse(isEnabled);
+  }
+
+  Future<void> _setOverclockEnabled(bool value) async {
+    if (!_isOverclockUnlocked) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    if (_currentUserId > 0) {
+      await prefs.setBool(_overclockEnabledPrefKey(_currentUserId), value);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isOverclockEnabled = value;
+      _currentEmotion = _restingEmotionForMode(value);
+    });
+    _syncOverclockPulse(value);
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : null,
+      ),
+    );
+  }
+
+  Future<void> _promptOverclockUnlock() async {
+    if (_isUnlockingOverclock || _isOverclockUnlocked) {
+      return;
+    }
+
+    if (!di.sl.isRegistered<GamificationRepository>() || _currentUserId <= 0) {
+      _showSnack(
+        'No se pudo validar tu saldo para desbloquear Overclock.',
+        isError: true,
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            final hasEnoughCoins = _availableCoins >= _overclockUnlockCost;
+            return AlertDialog(
+              backgroundColor: const Color(0xFF222544),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.lock_open_rounded,
+                    color: Color(0xFFFFD54F),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Desbloquear Overclock',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Vas a gastar monedas para activar el modo Overclock de Maika.',
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Costo: $_overclockUnlockCost coins'),
+                  Text('Tu saldo: $_availableCoins coins'),
+                  if (!hasEnoughCoins) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'No tienes monedas suficientes todavía.',
+                      style: TextStyle(
+                        color: Colors.red.shade200,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: hasEnoughCoins
+                      ? () => Navigator.of(dialogContext).pop(true)
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFC107),
+                    foregroundColor: Colors.black87,
+                  ),
+                  child: const Text('Desbloquear'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) {
+      return;
+    }
+
+    setState(() => _isUnlockingOverclock = true);
+
+    final repo = di.sl<GamificationRepository>();
+    final result = await repo.unlockFeature(
+      userId: _currentUserId,
+      featureKey: GamificationCatalog.overclockFeatureKey,
+      costCoins: _overclockUnlockCost,
+    );
+
+    if (result.isUnlocked) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_overclockEnabledPrefKey(_currentUserId), true);
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isUnlockingOverclock = false;
+      _availableCoins = result.remainingCoins;
+      if (result.isUnlocked) {
+        _isOverclockUnlocked = true;
+        _isOverclockEnabled = true;
+        _currentEmotion = _restingEmotionForMode(true);
+      }
+    });
+    _syncOverclockPulse(result.isUnlocked);
+
+    if (result.purchasedNow) {
+      _showSnack('Modo Overclock desbloqueado.');
+      return;
+    }
+
+    if (result.insufficientCoins) {
+      _showSnack(
+        'Te faltan monedas para desbloquear Overclock.',
+        isError: true,
+      );
+      return;
+    }
+
+    if (result.isUnlocked) {
+      _showSnack('El modo Overclock ya estaba desbloqueado.');
+    }
   }
 
   void _handleInputChanged() {
@@ -961,7 +1203,7 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
       appBar: AppBar(
         title: AnimatedBuilder(
           animation: _titleAnimation,
-          child: const Text('Chat con avatar'),
+          child: const Text('M.A.I.K.A'),
           builder: (context, child) {
             return Opacity(
               opacity: _titleAnimation.value,
@@ -982,15 +1224,127 @@ class _AvatarChatScreenState extends State<AvatarChatScreen>
                       color: Colors.white70,
                     ),
               ),
-              Switch(
-                value: _isOverclockEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _isOverclockEnabled = value;
-                    _currentEmotion = 'neutral';
-                  });
-                },
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 64,
+                height: 40,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _overclockPulseAnimation,
+                      builder: (context, child) {
+                        final pulse = _isOverclockEnabled
+                            ? _overclockPulseAnimation.value
+                            : 0.0;
+                        return Container(
+                          width: 60,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            gradient: _isOverclockEnabled
+                                ? LinearGradient(
+                                    colors: [
+                                      Color.lerp(
+                                        const Color(0xFF5B21B6),
+                                        const Color(0xFF8B5CF6),
+                                        pulse,
+                                      )!,
+                                      Color.lerp(
+                                        const Color(0xFF2563EB),
+                                        const Color(0xFF22D3EE),
+                                        pulse,
+                                      )!,
+                                    ],
+                                  )
+                                : null,
+                            color: _isOverclockEnabled
+                                ? null
+                                : Colors.white.withValues(alpha: 0.05),
+                            boxShadow: _isOverclockEnabled
+                                ? [
+                                    BoxShadow(
+                                      color: Color.lerp(
+                                        const Color(0x554F46E5),
+                                        const Color(0xAA22D3EE),
+                                        pulse,
+                                      )!,
+                                      blurRadius: 12 + (pulse * 10),
+                                      spreadRadius: 1 + (pulse * 1.5),
+                                    ),
+                                  ]
+                                : const [],
+                          ),
+                          child: child,
+                        );
+                      },
+                      child: Opacity(
+                        opacity: _isOverclockUnlocked ? 1 : 0.9,
+                        child: IgnorePointer(
+                          ignoring:
+                              !_isOverclockUnlocked || !_isOverclockAccessReady,
+                          child: Switch(
+                            value: _isOverclockEnabled,
+                            onChanged: _isOverclockUnlocked
+                                ? _setOverclockEnabled
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!_isOverclockUnlocked)
+                      Positioned(
+                        right: 4,
+                        child: GestureDetector(
+                          onTap:
+                              _isOverclockAccessReady && !_isUnlockingOverclock
+                                  ? _promptOverclockUnlock
+                                  : null,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 180),
+                            opacity: _isUnlockingOverclock ? 0.65 : 1,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: const Color(0x66FBC02D),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFFFD54F),
+                                  width: 1.2,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x55FFC107),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: _isUnlockingOverclock
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Color(0xFFFFF3B0),
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.lock_rounded,
+                                      size: 13,
+                                      color: Color(0xFFFFD54F),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
             ],
           ),
         ],

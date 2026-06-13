@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/analytics_service.dart';
+import '../../../pages/games/game_metrics.dart';
 import '../bloc/rpg_game_bloc.dart';
 import '../bloc/rpg_game_event.dart';
 import '../bloc/rpg_game_state.dart';
@@ -33,14 +34,13 @@ class RpgGamePage extends StatefulWidget {
 }
 
 class _RpgGamePageState extends State<RpgGamePage> {
-  static const String _gameKey = 'maika_fragmentada';
   late final RpgGameBloc bloc;
   late RpgGameWorld game;
   bool _gameCreated = false;
   VerseFragment? currentVerse;
   Timer? verseTimer;
-  late final DateTime _startTime;
-  late final String _sessionKey;
+  late DateTime _roundStartTime;
+  late String _sessionKey;
   int _roundIndex = 1;
   bool _sessionLogged = false;
   int _fragmentsCollected = 0;
@@ -48,8 +48,7 @@ class _RpgGamePageState extends State<RpgGamePage> {
   @override
   void initState() {
     super.initState();
-    _startTime = DateTime.now();
-    _sessionKey = _startTime.millisecondsSinceEpoch.toString();
+    _startRoundMetrics();
     bloc = RpgGameBloc(loadVerses: widget.loadVerses)..add(LoadGame());
   }
 
@@ -58,27 +57,35 @@ class _RpgGamePageState extends State<RpgGamePage> {
     if (bloc.state is RpgGameLoaded) {
       _fragmentsCollected = (bloc.state as RpgGameLoaded).collectedCount;
     }
-    _logSessionFinished();
+    _logSessionFinished(completed: false);
     verseTimer?.cancel();
     FlameAudio.bgm.stop();
     bloc.close();
     super.dispose();
   }
 
-  void _logSessionFinished() {
+  void _startRoundMetrics() {
+    _roundStartTime = DateTime.now();
+    _sessionKey = '${_roundStartTime.millisecondsSinceEpoch}:$_roundIndex';
+    _sessionLogged = false;
+    _fragmentsCollected = 0;
+  }
+
+  void _logSessionFinished({required bool completed}) {
     if (_sessionLogged) return;
     _sessionLogged = true;
 
-    final duration = DateTime.now().difference(_startTime);
+    final duration = DateTime.now().difference(_roundStartTime);
     final seconds = duration.inSeconds <= 0 ? 1 : duration.inSeconds;
     AnalyticsService().logEvent(
       'game_session_finished',
       params: {
-        'game': _gameKey,
-        'game_key': _gameKey,
+        'game': maikaFragmentadaGameKey,
+        'game_key': maikaFragmentadaGameKey,
         'session_key': _sessionKey,
         'seconds_played': seconds,
         'fragments_collected': _fragmentsCollected,
+        'completed': completed,
       },
     );
   }
@@ -95,6 +102,16 @@ class _RpgGamePageState extends State<RpgGamePage> {
         });
       }
     });
+  }
+
+  void _handleExit() {
+    _logSessionFinished(completed: false);
+    final onExit = widget.onExit;
+    if (onExit != null) {
+      onExit();
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   @override
@@ -126,13 +143,15 @@ class _RpgGamePageState extends State<RpgGamePage> {
           }
 
           if (state is RpgGameCompleted) {
+            final completed = !state.isDeath;
+            _logSessionFinished(completed: completed);
             AnalyticsService().logEvent(
               'game_finished',
               params: {
-                'game': _gameKey,
-                'game_key': _gameKey,
-                'round_key': '$_sessionKey:$_roundIndex',
-                'completed': !state.isDeath,
+                'game': maikaFragmentadaGameKey,
+                'game_key': maikaFragmentadaGameKey,
+                'round_key': _sessionKey,
+                'completed': completed,
                 'fragments_collected': _fragmentsCollected,
               },
             );
@@ -181,18 +200,18 @@ class _RpgGamePageState extends State<RpgGamePage> {
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back),
                     color: Colors.white,
-                    onPressed:
-                        widget.onExit ?? () => Navigator.of(context).pop(),
+                    onPressed: _handleExit,
                   ),
                 ),
                 if (state is RpgGameCompleted && currentVerse == null)
                   _VictoryOverlay(
                     isDeath: state.isDeath,
-                    onBackToMenu: widget.onExit,
+                    onBackToMenu: _handleExit,
                     onPlayAgain: () {
                       setState(() {
                         _gameCreated = false;
                         _roundIndex++;
+                        _startRoundMetrics();
                       });
                       bloc.add(LoadGame());
                     },
@@ -323,8 +342,7 @@ class _VictoryOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ElevatedButton(
-                    onPressed:
-                        onBackToMenu ?? () => Navigator.of(context).pop(),
+                    onPressed: onBackToMenu,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,

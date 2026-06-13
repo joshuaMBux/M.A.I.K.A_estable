@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/theme/theme_extensions.dart';
 import '../../blocs/settings/settings_cubit.dart';
 import '../../widgets/glass_card.dart';
 
@@ -9,8 +10,10 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -20,19 +23,15 @@ class NotificationsScreen extends StatelessWidget {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
           BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, state) {
               final s = state.settings;
               final textTheme = Theme.of(context).textTheme;
-              final primary = Theme.of(context).colorScheme.primary;
+              final primary = scheme.primary;
 
               return SafeArea(
                 child: ListView(
@@ -64,7 +63,7 @@ class NotificationsScreen extends StatelessWidget {
                                 Text(
                                   'Alertas y recordatorios',
                                   style: textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                                    color: scheme.textPrimary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -72,9 +71,7 @@ class NotificationsScreen extends StatelessWidget {
                                   'Controla las notificaciones generales '
                                   'y del plan de lectura.',
                                   style: textTheme.bodySmall?.copyWith(
-                                    color: Colors.white.withValues(
-                                      alpha: 0.8,
-                                    ),
+                                    color: scheme.textSecondary,
                                   ),
                                 ),
                               ],
@@ -91,7 +88,7 @@ class NotificationsScreen extends StatelessWidget {
                           Text(
                             'Preferencias',
                             style: textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
+                              color: scheme.textPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -101,7 +98,7 @@ class NotificationsScreen extends StatelessWidget {
                             title: Text(
                               'Notificaciones generales',
                               style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                               ),
                             ),
                             value: s.notificationsEnabled,
@@ -115,7 +112,7 @@ class NotificationsScreen extends StatelessWidget {
                             title: Text(
                               'Versículo del día',
                               style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                               ),
                             ),
                             value: s.verseReminderEnabled,
@@ -131,7 +128,7 @@ class NotificationsScreen extends StatelessWidget {
                             title: Text(
                               'Plan de lectura',
                               style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                               ),
                             ),
                             value: s.readingPlanReminderEnabled,
@@ -147,13 +144,13 @@ class NotificationsScreen extends StatelessWidget {
                             title: Text(
                               'Modo "No molestar"',
                               style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                               ),
                             ),
                             subtitle: Text(
                               'Silencia recordatorios en la noche.',
                               style: textTheme.bodySmall?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.8),
+                                color: scheme.textSecondary,
                               ),
                             ),
                             value: s.doNotDisturb,
@@ -173,7 +170,7 @@ class NotificationsScreen extends StatelessWidget {
                         'flutter_local_notifications para programar '
                         'recordatorios.',
                         style: textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: scheme.textSecondary,
                           height: 1.4,
                         ),
                       ),

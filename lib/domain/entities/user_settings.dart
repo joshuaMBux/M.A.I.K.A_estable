@@ -25,7 +25,7 @@ class UserSettings {
   });
 
   static const UserSettings initial = UserSettings(
-    themeMode: AppThemeMode.dark,
+    themeMode: AppThemeMode.light,
     language: AppLanguage.es,
     textScale: 1.0,
     notificationsEnabled: true,

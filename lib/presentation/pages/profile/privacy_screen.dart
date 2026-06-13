@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/theme/theme_extensions.dart';
 import '../../../data/datasources/user_settings_local_data_source.dart';
 import '../../blocs/settings/settings_cubit.dart';
 import '../../widgets/glass_card.dart';
@@ -36,9 +37,10 @@ class PrivacyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -48,12 +50,8 @@ class PrivacyScreen extends StatelessWidget {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
           SafeArea(
@@ -68,7 +66,7 @@ class PrivacyScreen extends StatelessWidget {
                       Text(
                         'Política de privacidad',
                         style: textTheme.titleSmall?.copyWith(
-                          color: Colors.white,
+                          color: scheme.textPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -78,7 +76,7 @@ class PrivacyScreen extends StatelessWidget {
                         'privacidad o abrir una pantalla con el documento '
                         'completo.',
                         style: textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: scheme.textSecondary,
                           height: 1.4,
                         ),
                       ),
@@ -95,25 +93,28 @@ class PrivacyScreen extends StatelessWidget {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: scheme.overlayOnSurface(
+                              0.1,
+                              lightAlpha: 0.05,
+                            ),
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.description_outlined,
-                            color: Colors.white,
+                            color: scheme.textPrimary,
                             size: 20,
                           ),
                         ),
                         title: Text(
                           'Ver política completa',
                           style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
+                            color: scheme.textPrimary,
                           ),
                         ),
                         subtitle: Text(
                           'Puede abrirse en otra pantalla o WebView.',
                           style: textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: scheme.textSecondary,
                           ),
                         ),
                         onTap: () {
@@ -143,13 +144,13 @@ class PrivacyScreen extends StatelessWidget {
                         title: Text(
                           'Limpiar datos locales',
                           style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
+                            color: scheme.textPrimary,
                           ),
                         ),
                         subtitle: Text(
                           'SharedPreferences, ajustes y caché local.',
                           style: textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: scheme.textSecondary,
                           ),
                         ),
                         onTap: () => _clearLocalData(context),

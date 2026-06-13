@@ -212,9 +212,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         child: Column(
           children: [
             _FavoritesHero(
+              activeTab: _activeTab,
               scheme: scheme,
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
             ),
             const SizedBox(height: 16),
             _GuardadosSegmentedControl(
@@ -275,6 +274,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       itemBuilder: (context, index) {
         final verse = _savedVerses[index];
         return _VerseCard(
+          scheme: scheme,
+          textPrimary: textPrimary,
           text: verse.texto,
           reference: verse.referencia,
           onDelete: () => _removeVerseFavorite(context, verse),
@@ -404,18 +405,24 @@ class _GuardadosSegmentedControl extends StatelessWidget {
 }
 
 class _FavoritesHero extends StatelessWidget {
+  final _SavedTab activeTab;
   final ColorScheme scheme;
-  final Color textPrimary;
-  final Color textSecondary;
 
   const _FavoritesHero({
+    required this.activeTab,
     required this.scheme,
-    required this.textPrimary,
-    required this.textSecondary,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isVerses = activeTab == _SavedTab.verses;
+    final title =
+        isVerses ? 'Tus versiculos guardados' : 'Tus conversaciones guardadas';
+    final subtitle = isVerses
+        ? 'Regresa a ellos cuando necesites animo.'
+        : 'Vuelve a tus mensajes favoritos cuando quieras.';
+    final icon = isVerses ? Icons.favorite : Icons.chat_bubble_rounded;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -438,7 +445,7 @@ class _FavoritesHero extends StatelessWidget {
               color: scheme.onPrimary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(Icons.favorite, color: scheme.onPrimary, size: 24),
+            child: Icon(icon, color: scheme.onPrimary, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -446,7 +453,7 @@ class _FavoritesHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tus versiculos guardados',
+                  title,
                   style: TextStyle(
                     color: scheme.onPrimary,
                     fontWeight: FontWeight.w600,
@@ -454,7 +461,7 @@ class _FavoritesHero extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Regresa a ellos cuando necesites animo.',
+                  subtitle,
                   style: TextStyle(
                     color: scheme.onPrimary.withValues(alpha: 0.8),
                     fontSize: 12,
@@ -475,11 +482,15 @@ class _FavoritesHero extends StatelessWidget {
 }
 
 class _VerseCard extends StatelessWidget {
+  final ColorScheme scheme;
+  final Color textPrimary;
   final String text;
   final String reference;
   final VoidCallback? onDelete;
 
   const _VerseCard({
+    required this.scheme,
+    required this.textPrimary,
     required this.text,
     required this.reference,
     this.onDelete,
@@ -489,21 +500,11 @@ class _VerseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.borderWithOverlay(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +516,7 @@ class _VerseCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6B46C1).withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: const Color(0xFF6B46C1).withValues(alpha: 0.3),
                     width: 1,
@@ -535,27 +536,27 @@ class _VerseCard extends StatelessWidget {
                 icon: const Icon(
                   Icons.delete_outline,
                   color: Color(0xFFEC4899),
-                  size: 20,
+                  size: 18,
                 ),
                 onPressed: onDelete,
                 tooltip: 'Eliminar de favoritos',
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             text,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 14,
-              height: 1.5,
+              color: textPrimary,
+              fontSize: 13,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             reference,
-            style: const TextStyle(
-              color: Color(0xFF6B46C1),
+            style: TextStyle(
+              color: scheme.primary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
               fontStyle: FontStyle.italic,

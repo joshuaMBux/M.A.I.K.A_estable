@@ -119,6 +119,122 @@ class GamificationRepository {
     );
   }
 
+  Future<bool> isFeatureUnlocked({
+    required int userId,
+    required String featureKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'user_unlock',
+      columns: ['id'],
+      where: 'user_id = ? AND feature_key = ?',
+      whereArgs: [userId, featureKey],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  Future<FeatureUnlockResult> unlockFeature({
+    required int userId,
+    required String featureKey,
+    required int costCoins,
+  }) async {
+    final db = await _dbHelper.database;
+    var result = const FeatureUnlockResult(
+      isUnlocked: false,
+      purchasedNow: false,
+      insufficientCoins: false,
+      remainingCoins: 0,
+    );
+
+    await db.transaction((txn) async {
+      await _ensureUserProgress(txn, userId);
+
+      final existingUnlock = await txn.query(
+        'user_unlock',
+        columns: ['id'],
+        where: 'user_id = ? AND feature_key = ?',
+        whereArgs: [userId, featureKey],
+        limit: 1,
+      );
+
+      final currentProgress = await _getUserProgress(txn, userId);
+      if (existingUnlock.isNotEmpty) {
+        result = FeatureUnlockResult(
+          isUnlocked: true,
+          purchasedNow: false,
+          insufficientCoins: false,
+          remainingCoins: currentProgress.coins,
+        );
+        return;
+      }
+
+      if (currentProgress.coins < costCoins) {
+        result = FeatureUnlockResult(
+          isUnlocked: false,
+          purchasedNow: false,
+          insufficientCoins: true,
+          remainingCoins: currentProgress.coins,
+        );
+        return;
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final updatedCoins = currentProgress.coins - costCoins;
+      final eventKey = 'feature_unlock:$userId:$featureKey';
+
+      await txn.insert(
+        'user_unlock',
+        {
+          'user_id': userId,
+          'feature_key': featureKey,
+          'spent_coins': costCoins,
+          'unlocked_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+
+      await txn.insert(
+        'reward_transaction',
+        {
+          'user_id': userId,
+          'event_key': eventKey,
+          'action_type': GamificationCatalog.featureUnlockAction,
+          'xp_delta': 0,
+          'coins_delta': -costCoins,
+          'metadata_json': jsonEncode({
+            'feature_key': featureKey,
+            'cost_coins': costCoins,
+          }),
+          'created_at': now,
+        },
+      );
+
+      await txn.update(
+        'user_progress',
+        {
+          'coins': updatedCoins,
+          'updated_at': now,
+        },
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
+
+      result = FeatureUnlockResult(
+        isUnlocked: true,
+        purchasedNow: true,
+        insufficientCoins: false,
+        remainingCoins: updatedCoins,
+      );
+    });
+
+    if (result.purchasedNow) {
+      _updates.add(userId);
+    }
+
+    return result;
+  }
+
   Future<RewardGrantResult> _grantReward({
     required int userId,
     required String eventKey,

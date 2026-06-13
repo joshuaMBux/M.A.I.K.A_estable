@@ -63,11 +63,12 @@ class EnemyComponent extends SpriteComponent
 
     final direction = (player.position - position).normalized();
     final velocity = direction * projectileSpeed;
+    final spawnOffset = (size.x * 0.5) + 10;
 
     final projectile = ProjectileComponent(
       velocity: velocity,
       owner: this,
-      position: position + direction * 24,
+      position: position + direction * spawnOffset,
       sprite: projectileSprite,
     );
 

@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/di/injection_container.dart' as di;
+import '../../../core/theme/theme_extensions.dart';
 import '../../../data/models/gamification_models.dart';
 import '../../../data/repositories/gamification_repository.dart';
 import '../../blocs/auth/auth_bloc.dart';
@@ -239,6 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         final dashboard = _gamificationDashboard;
+        final scheme = Theme.of(context).colorScheme;
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 80, 16, 16),
           constraints: BoxConstraints(
@@ -246,12 +248,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF20243D),
+            color: scheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            boxShadow: const [
+            border: Border.all(
+              color: scheme.borderWithOverlay(0.12, lightAlpha: 0.08),
+            ),
+            boxShadow: [
               BoxShadow(
-                color: Colors.black38,
+                color: scheme.shadowWithOverlay(0.38, lightAlpha: 0.14),
                 blurRadius: 24,
                 offset: Offset(0, 16),
               ),
@@ -273,16 +277,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 54,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
+                          color: scheme.overlayOnSurface(0.18, lightAlpha: 0.1),
                           borderRadius: BorderRadius.circular(99),
                         ),
                       ),
                     ),
                     const SizedBox(height: 18),
-                    const Text(
+                    Text(
                       'Logros y ranking',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: scheme.textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -291,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Todo se guarda localmente en este dispositivo.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: scheme.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -330,6 +334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final settingsState = context.watch<SettingsCubit>().state;
+    final scheme = Theme.of(context).colorScheme;
     final bgPath = settingsState.settings.profileBackgroundPath;
     final sessionUserId = authState is AuthSuccess
         ? int.tryParse(authState.user.id) ?? _session.userId
@@ -343,14 +348,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-          ),
+        decoration: BoxDecoration(
+          gradient: scheme.pageGradient,
         ),
         child: SafeArea(
           child: Column(
@@ -361,10 +362,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: scheme.overlayOnSurface(0.1, lightAlpha: 0.04),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: scheme.borderWithOverlay(0.2, lightAlpha: 0.08),
                       width: 1,
                     ),
                   ),
@@ -384,14 +385,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Mi Perfil',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -399,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Text(
                               'Gestiona tu cuenta',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: scheme.textSecondary,
                                 fontSize: 12,
                               ),
                             ),
@@ -451,16 +452,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: scheme.overlayOnSurface(
+                                    0.1,
+                                    lightAlpha: 0.04,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
+                                    color: scheme.borderWithOverlay(
+                                      0.2,
+                                      lightAlpha: 0.08,
+                                    ),
                                     width: 1,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.1),
+                                      color: scheme.shadowWithOverlay(
+                                        0.1,
+                                        lightAlpha: 0.08,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 5),
                                     ),
@@ -477,7 +486,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   decoration: BoxDecoration(
                                     color: bgPath == null || bgPath.isEmpty
                                         ? Colors.transparent
-                                        : Colors.black.withValues(alpha: 0.42),
+                                        : scheme.shadowWithOverlay(
+                                            0.42,
+                                            lightAlpha: 0.18,
+                                          ),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: SingleChildScrollView(
@@ -493,8 +505,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: Colors.white
-                                                    .withValues(alpha: 0.4),
+                                                color: scheme.borderWithOverlay(
+                                                  0.4,
+                                                  lightAlpha: 0.18,
+                                                ),
                                                 width: 2.5,
                                               ),
                                             ),
@@ -507,8 +521,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           userName.isEmpty
                                               ? 'Usuario'
                                               : userName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: scheme.textPrimary,
                                             fontSize: 17,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -521,8 +535,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               ? 'Sin correo disponible'
                                               : userEmail,
                                           style: TextStyle(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.8),
+                                            color: scheme.textSecondary,
                                             fontSize: 11,
                                           ),
                                           maxLines: 1,
@@ -661,18 +674,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     VoidCallback onTap, {
     bool isDestructive = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: scheme.overlayOnSurface(0.1, lightAlpha: 0.04),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: scheme.borderWithOverlay(0.2, lightAlpha: 0.08),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: scheme.shadowWithOverlay(0.1, lightAlpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -696,14 +711,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           title,
           style: TextStyle(
-            color: isDestructive ? Colors.red : Colors.white,
+            color: isDestructive ? Colors.red : scheme.textPrimary,
             fontWeight: FontWeight.w500,
             fontSize: 14,
           ),
         ),
         trailing: Icon(
           Icons.chevron_right,
-          color: Colors.white.withValues(alpha: 0.7),
+          color: scheme.textSecondary,
         ),
         onTap: onTap,
       ),
@@ -711,25 +726,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: scheme.surfaceContainerHigh,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Cerrar Sesion',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: scheme.textPrimary),
         ),
         content: Text(
           'Estas seguro de que quieres cerrar sesion?',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+          style: TextStyle(color: scheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+              style: TextStyle(color: scheme.textSecondary),
             ),
           ),
           TextButton(
@@ -762,6 +779,7 @@ class _ProfileProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final level = progress?.level ?? 1;
     final coins = progress?.coins ?? 0;
     final xpProgress = progress?.xpProgress ?? 0;
@@ -772,9 +790,11 @@ class _ProfileProgressCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
+        color: scheme.overlayOnSurface(0.18, lightAlpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: scheme.borderWithOverlay(0.12, lightAlpha: 0.08),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,10 +832,10 @@ class _ProfileProgressCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Text(
+              Text(
                 'XP',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: scheme.textPrimary,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -824,7 +844,7 @@ class _ProfileProgressCard extends StatelessWidget {
               Text(
                 '$currentLevelXp / $xpForNextLevel',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.72),
+                  color: scheme.textSecondary,
                   fontSize: 10,
                 ),
               ),
@@ -836,7 +856,7 @@ class _ProfileProgressCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: xpProgress.clamp(0, 1),
               minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              backgroundColor: scheme.overlayOnSurface(0.12, lightAlpha: 0.08),
               valueColor: const AlwaysStoppedAnimation<Color>(
                 Color(0xFF8B5CF6),
               ),
@@ -863,6 +883,7 @@ class _ProfileStatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
@@ -876,8 +897,8 @@ class _ProfileStatTile extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: scheme.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -886,7 +907,7 @@ class _ProfileStatTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
+              color: scheme.textSecondary,
               fontSize: 9,
             ),
           ),
@@ -911,21 +932,24 @@ class _AchievementGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final accent = unlocked ? const Color(0xFF10B981) : const Color(0xFF6B7280);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: scheme.overlayOnSurface(0.05, lightAlpha: 0.03),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: scheme.borderWithOverlay(0.08, lightAlpha: 0.06),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: scheme.textPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
@@ -935,7 +959,7 @@ class _AchievementGroup extends StatelessWidget {
             Text(
               emptyLabel,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
+                color: scheme.textSecondary,
                 fontSize: 12,
               ),
             ),
@@ -944,7 +968,7 @@ class _AchievementGroup extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: scheme.overlayOnSurface(0.12, lightAlpha: 0.05),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
@@ -972,8 +996,8 @@ class _AchievementGroup extends StatelessWidget {
                       children: [
                         Text(
                           achievement.definition.title,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: scheme.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -981,7 +1005,7 @@ class _AchievementGroup extends StatelessWidget {
                         Text(
                           achievement.definition.description,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.68),
+                            color: scheme.textSecondary,
                             fontSize: 12,
                             height: 1.4,
                           ),
@@ -1006,20 +1030,23 @@ class _RankingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: scheme.overlayOnSurface(0.05, lightAlpha: 0.03),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: scheme.borderWithOverlay(0.08, lightAlpha: 0.06),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Ranking local',
             style: TextStyle(
-              color: Colors.white,
+              color: scheme.textPrimary,
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
@@ -1029,7 +1056,7 @@ class _RankingSection extends StatelessWidget {
             Text(
               'Todavia no hay usuarios con progreso local.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
+                color: scheme.textSecondary,
                 fontSize: 12,
               ),
             ),
@@ -1041,12 +1068,12 @@ class _RankingSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: entry.isCurrentUser
                         ? const Color(0xFF8B5CF6).withValues(alpha: 0.16)
-                        : Colors.black.withValues(alpha: 0.18),
+                        : scheme.overlayOnSurface(0.12, lightAlpha: 0.05),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: entry.isCurrentUser
                           ? const Color(0xFF8B5CF6).withValues(alpha: 0.35)
-                          : Colors.white.withValues(alpha: 0.06),
+                          : scheme.borderWithOverlay(0.06, lightAlpha: 0.06),
                     ),
                   ),
                   child: Row(
@@ -1055,14 +1082,14 @@ class _RankingSection extends StatelessWidget {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: scheme.overlayOnSurface(0.08, lightAlpha: 0.05),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Center(
                           child: Text(
                             '#${entry.position}',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: scheme.textPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -1076,8 +1103,8 @@ class _RankingSection extends StatelessWidget {
                           children: [
                             Text(
                               entry.userName,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: scheme.textPrimary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1085,7 +1112,7 @@ class _RankingSection extends StatelessWidget {
                             Text(
                               'Nivel ${entry.level}  |  ${entry.xpTotal} XP  |  ${entry.coins} coins',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.68),
+                                color: scheme.textSecondary,
                                 fontSize: 12,
                               ),
                             ),

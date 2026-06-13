@@ -1,7 +1,11 @@
+-- Maika SQLite schema
+-- Source: lib/core/database/database_helper.dart
+-- Schema version: 9
+
 PRAGMA foreign_keys = ON;
 
 -- =====================
--- TABLAS PRINCIPALES
+-- Tablas principales
 -- =====================
 
 CREATE TABLE usuario (
@@ -30,10 +34,6 @@ CREATE TABLE versiculo (
     UNIQUE (id_libro, capitulo, versiculo),
     FOREIGN KEY (id_libro) REFERENCES libro(id_libro)
 );
-
-CREATE UNIQUE INDEX idx_versiculo_unique ON versiculo(id_libro, capitulo, versiculo);
-CREATE INDEX idx_versiculo_capitulo ON versiculo(id_libro, capitulo);
-CREATE INDEX idx_versiculo_texto ON versiculo(texto);
 
 CREATE TABLE categoria (
     id_categoria INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +78,7 @@ CREATE TABLE pregunta_frecuente (
 );
 
 -- =====================
--- TABLAS DE APRENDIZAJE Y GAMIFICACIÓN
+-- Lectura y contenido
 -- =====================
 
 CREATE TABLE plan_lectura (
@@ -130,6 +130,9 @@ CREATE TABLE audio_capitulo (
     url TEXT,
     duracion_segundos INTEGER,
     local_path TEXT,
+    download_status TEXT DEFAULT 'REMOTE',
+    file_size_bytes INTEGER,
+    checksum_hash TEXT,
     FOREIGN KEY (id_libro) REFERENCES libro(id_libro)
 );
 
@@ -168,7 +171,7 @@ CREATE TABLE versiculo_del_dia (
 );
 
 -- =====================
--- TABLAS DE QUIZ / TEST
+-- Quiz
 -- =====================
 
 CREATE TABLE quiz (
@@ -201,3 +204,117 @@ CREATE TABLE resultado_quiz (
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
     FOREIGN KEY (id_quiz) REFERENCES quiz(id_quiz)
 );
+
+-- =====================
+-- Actividad de minijuegos
+-- =====================
+
+CREATE TABLE IF NOT EXISTS game_activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_name TEXT NOT NULL,
+    game TEXT NOT NULL,
+    completed INTEGER,
+    seconds_played INTEGER,
+    fragments_collected INTEGER,
+    created_at INTEGER NOT NULL
+);
+
+-- =====================
+-- Gamificacion local
+-- =====================
+
+CREATE TABLE IF NOT EXISTS user_progress (
+    user_id INTEGER PRIMARY KEY,
+    xp_total INTEGER NOT NULL DEFAULT 0,
+    level INTEGER NOT NULL DEFAULT 1,
+    coins INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER,
+    FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS reward_transaction (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    event_key TEXT NOT NULL UNIQUE,
+    action_type TEXT NOT NULL,
+    xp_delta INTEGER NOT NULL DEFAULT 0,
+    coins_delta INTEGER NOT NULL DEFAULT 0,
+    metadata_json TEXT,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_achievement (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    achievement_key TEXT NOT NULL,
+    unlocked_at INTEGER NOT NULL,
+    UNIQUE (user_id, achievement_key),
+    FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+);
+
+-- =====================
+-- Chat
+-- =====================
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    updated_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    sender TEXT,
+    text TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    image_url TEXT,
+    list_items TEXT,
+    chips TEXT,
+    metadata TEXT,
+    generated INTEGER DEFAULT 0,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS favorites (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+
+-- =====================
+-- Indices
+-- =====================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_versiculo_unique
+ON versiculo(id_libro, capitulo, versiculo);
+
+CREATE INDEX IF NOT EXISTS idx_versiculo_capitulo
+ON versiculo(id_libro, capitulo);
+
+CREATE INDEX IF NOT EXISTS idx_versiculo_texto
+ON versiculo(texto);
+
+CREATE INDEX IF NOT EXISTS idx_reward_transaction_user
+ON reward_transaction(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_reward_transaction_action
+ON reward_transaction(user_id, action_type);
+
+CREATE INDEX IF NOT EXISTS idx_user_achievement_user
+ON user_achievement(user_id, unlocked_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation
+ON messages(conversation_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_messages_status
+ON messages(status);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_message
+ON favorites(message_id);

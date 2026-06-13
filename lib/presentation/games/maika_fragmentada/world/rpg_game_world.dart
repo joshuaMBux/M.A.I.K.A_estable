@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/widgets.dart' show EdgeInsets;
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flame/experimental.dart' show Rectangle;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/sprite.dart';
@@ -44,6 +45,9 @@ class RpgGameWorld extends FlameGame
 
   StartScreenComponent? _startScreen;
   bool _worldInitialized = false;
+  Rect? _mapBounds;
+
+  Rect? get mapBounds => _mapBounds;
 
   RpgGameWorld({
     required this.verses,
@@ -156,6 +160,7 @@ class RpgGameWorld extends FlameGame
     // Dimensiones reales del mapa en píxeles (ya escaladas).
     final mapWidth = tileSize * map.width * scale;
     final mapHeight = tileSize * map.height * scale;
+    _mapBounds = Rect.fromLTWH(0, 0, mapWidth, mapHeight);
 
     // RNG compartido para ítems y escudo.
     final random = Random();
@@ -237,9 +242,13 @@ class RpgGameWorld extends FlameGame
 
     // Cámara siguiendo al jugador, con un pequeño offset hacia arriba
     // para ver un poco más de mapa por delante del personaje.
-    camera.viewfinder.anchor = const Anchor(0.5, 0.4);
-    camera.follow(player!);
-    camera.viewfinder.zoom = 1.0; // Usamos escala manual en los componentes
+    camera.viewfinder.anchor = const Anchor(0.5, 0.42);
+    camera.follow(player!, snap: true);
+    _updateCameraForScreen();
+    camera.setBounds(
+      Rectangle.fromLTWH(0, 0, mapWidth, mapHeight),
+      considerViewport: true,
+    );
 
     // Items (libros) en el mundo
     for (final item in items) {
@@ -285,5 +294,35 @@ class RpgGameWorld extends FlameGame
   void _handleItemCollected(VerseFragment verse) {
     onItemCollected(verse.id);
   }
-}
 
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    _updateCameraForScreen();
+  }
+
+  void _updateCameraForScreen() {
+    if (size.x <= 0 || size.y <= 0) {
+      return;
+    }
+
+    final aspectRatio = size.x / size.y;
+    final isLandscape = aspectRatio > 1.0;
+
+    if (isLandscape) {
+      camera.viewfinder.anchor = const Anchor(0.5, 0.52);
+      camera.viewfinder.zoom = aspectRatio >= 1.7 ? 0.6 : 0.68;
+    } else {
+      camera.viewfinder.anchor = const Anchor(0.5, 0.42);
+      camera.viewfinder.zoom = 0.9;
+    }
+
+    final mapBounds = _mapBounds;
+    if (mapBounds != null) {
+      camera.setBounds(
+        Rectangle.fromRect(mapBounds),
+        considerViewport: true,
+      );
+    }
+  }
+}

@@ -75,13 +75,17 @@ class DatabaseHelper {
     if (oldVersion < 9) {
       await _createGamificationTables(db);
     }
+
+    if (oldVersion < 10) {
+      await _createGamificationTables(db);
+    }
   }
 
   Future<Database> _initDatabaseV2() async {
     String path = join(await getDatabasesPath(), 'maika_database.db');
     return await openDatabase(
       path,
-      version: 9, // v9: gamificacion local con progreso, recompensas y logros
+      version: 10, // v10: desbloqueos persistentes por monedas
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -1042,6 +1046,18 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_unlock (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        feature_key TEXT NOT NULL,
+        spent_coins INTEGER NOT NULL DEFAULT 0,
+        unlocked_at INTEGER NOT NULL,
+        UNIQUE (user_id, feature_key),
+        FOREIGN KEY (user_id) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_reward_transaction_user
       ON reward_transaction(user_id, created_at DESC)
     ''');
@@ -1054,6 +1070,11 @@ class DatabaseHelper {
     await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_user_achievement_user
       ON user_achievement(user_id, unlocked_at DESC)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_user_unlock_user
+      ON user_unlock(user_id, unlocked_at DESC)
     ''');
   }
 

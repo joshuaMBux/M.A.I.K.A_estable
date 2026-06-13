@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/di/injection_container.dart' as di;
+import '../../../core/theme/theme_extensions.dart';
 import '../../blocs/devotional/devotional_bloc.dart';
 import '../../blocs/devotional/devotional_event.dart';
 import '../../blocs/devotional/devotional_state.dart';
@@ -23,36 +24,39 @@ class _DevotionalView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         title: const Text('Devocional'),
-        backgroundColor: const Color(0xFF6B46C1),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
       ),
-      body: BlocConsumer<DevotionalBloc, DevotionalState>(
-        listener: (context, state) {
-          if (state is DevotionalError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is DevotionalLoading || state is DevotionalInitial) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6B46C1)),
-            );
-          } else if (state is DevotionalLoaded) {
-            return _DevotionalContent(state: state);
-          } else if (state is DevotionalError) {
-            return _DevotionalErrorView(message: state.message);
-          }
-          return const SizedBox.shrink();
-        },
+      body: Container(
+        decoration: BoxDecoration(gradient: scheme.pageGradient),
+        child: BlocConsumer<DevotionalBloc, DevotionalState>(
+          listener: (context, state) {
+            if (state is DevotionalError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            if (state is DevotionalLoading || state is DevotionalInitial) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF6B46C1)),
+              );
+            } else if (state is DevotionalLoaded) {
+              return _DevotionalContent(state: state);
+            } else if (state is DevotionalError) {
+              return _DevotionalErrorView(message: state.message);
+            }
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
@@ -65,18 +69,19 @@ class _DevotionalErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.white70),
+            Icon(Icons.error_outline, size: 64, color: scheme.textSecondary),
             const SizedBox(height: 16),
             Text(
               'No se pudo cargar el devocional',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
+                color: scheme.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -86,7 +91,7 @@ class _DevotionalErrorView extends StatelessWidget {
               message,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              ).textTheme.bodyMedium?.copyWith(color: scheme.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -115,6 +120,7 @@ class _DevotionalContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final bloc = context.read<DevotionalBloc>();
     final displayDevotional = state.selected ?? state.today;
     final history = state.recent.where((devotional) {
@@ -141,7 +147,7 @@ class _DevotionalContent extends StatelessWidget {
           Text(
             'Devocionales recientes',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.white,
+              color: scheme.textPrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -150,13 +156,15 @@ class _DevotionalContent extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: scheme.overlayOnSurface(0.08, lightAlpha: 0.04),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                border: Border.all(
+                  color: scheme.borderWithOverlay(0.15, lightAlpha: 0.08),
+                ),
               ),
-              child: const Text(
+              child: Text(
                 'Por ahora no hay mas devocionales disponibles. Vuelve pronto para nuevas reflexiones.',
-                style: TextStyle(color: Colors.white70, height: 1.4),
+                style: TextStyle(color: scheme.textSecondary, height: 1.4),
                 textAlign: TextAlign.center,
               ),
             )
@@ -183,6 +191,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -194,7 +203,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: scheme.shadowWithOverlay(0.35, lightAlpha: 0.12),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -208,7 +217,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: scheme.onPrimary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Icon(
@@ -224,8 +233,8 @@ class _DevotionalHighlightCard extends StatelessWidget {
                   children: [
                     Text(
                       devotional.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.onPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -234,7 +243,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
                     Text(
                       _formatDate(devotional.date),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: scheme.onPrimary.withValues(alpha: 0.8),
                         fontSize: 13,
                       ),
                     ),
@@ -248,17 +257,19 @@ class _DevotionalHighlightCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: scheme.shadowWithOverlay(0.2, lightAlpha: 0.08),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: scheme.onPrimary.withValues(alpha: 0.2),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     devotional.verseReference!,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: scheme.onPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -270,7 +281,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
                       child: Text(
                         devotional.verseText!,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: scheme.onPrimary.withValues(alpha: 0.85),
                           fontSize: 13,
                           height: 1.5,
                         ),
@@ -282,8 +293,8 @@ class _DevotionalHighlightCard extends StatelessWidget {
           if (devotional.verseReference != null) const SizedBox(height: 20),
           Text(
             devotional.content,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: scheme.onPrimary,
               fontSize: 15,
               height: 1.6,
             ),
@@ -293,7 +304,7 @@ class _DevotionalHighlightCard extends StatelessWidget {
             Text(
               'Autor: ${devotional.author}',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
+                color: scheme.onPrimary.withValues(alpha: 0.85),
                 fontStyle: FontStyle.italic,
                 fontSize: 13,
               ),
@@ -317,6 +328,7 @@ class _DevotionalHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -325,13 +337,20 @@ class _DevotionalHistoryTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFF6B46C1).withValues(alpha: 0.25)
-              : Colors.white.withValues(alpha: 0.08),
+              : scheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF6B46C1).withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.12),
+                : scheme.borderWithOverlay(0.12, lightAlpha: 0.08),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadowWithOverlay(0.12, lightAlpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -354,7 +373,7 @@ class _DevotionalHistoryTile extends StatelessWidget {
                   Text(
                     devotional.title,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.95),
+                      color: isSelected ? Colors.white : scheme.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -363,7 +382,9 @@ class _DevotionalHistoryTile extends StatelessWidget {
                   Text(
                     _formatDate(devotional.date),
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.75)
+                          : scheme.textSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -371,7 +392,7 @@ class _DevotionalHistoryTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: Colors.white54),
+            Icon(Icons.chevron_right, color: scheme.textSecondary),
           ],
         ),
       ),
@@ -386,28 +407,38 @@ class _EmptyDevotionalBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: scheme.overlayOnSurface(0.08, lightAlpha: 0.04),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        border: Border.all(
+          color: scheme.borderWithOverlay(0.15, lightAlpha: 0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadowWithOverlay(0.12, lightAlpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Devocional no disponible',
             style: TextStyle(
-              color: Colors.white,
+              color: scheme.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Por ahora no encontramos un devocional para hoy. Intenta actualizar para sincronizar nuevamente.',
-            style: TextStyle(color: Colors.white70, height: 1.4),
+            style: TextStyle(color: scheme.textSecondary, height: 1.4),
           ),
           const SizedBox(height: 16),
           ElevatedButton(

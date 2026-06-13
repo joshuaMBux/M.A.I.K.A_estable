@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/theme_extensions.dart';
 import '../../../core/utils/time_formatter.dart';
 import '../../../domain/entities/chat_message.dart';
 import '../../blocs/chat/chat_bloc.dart';
@@ -63,8 +64,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<ChatBloc>();
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _ChatPalette.background,
+      backgroundColor: scheme.backgroundPrimary,
       body: SafeArea(
         child: BlocConsumer<ChatBloc, ChatState>(
           listener: (context, state) {
@@ -80,14 +82,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: _ChatPalette.surface,
+                      color: scheme.backgroundSecondary,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(28),
                         topRight: Radius.circular(28),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
+                          color: scheme.shadowWithOverlay(0.25, lightAlpha: 0.08),
                           blurRadius: 20,
                           offset: const Offset(0, -6),
                         ),
@@ -460,6 +462,7 @@ class _TypingBubbleState extends State<_TypingBubble>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -470,7 +473,7 @@ class _TypingBubbleState extends State<_TypingBubble>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
-            color: _ChatPalette.messageSurface,
+            color: scheme.surfaceContainerHigh,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -483,7 +486,7 @@ class _TypingBubbleState extends State<_TypingBubble>
             children: [
               const Text(
                 'Maika esta escribiendo',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(fontSize: 13),
               ),
               const SizedBox(width: 12),
               Row(
@@ -503,8 +506,8 @@ class _TypingBubbleState extends State<_TypingBubble>
                       child: Container(
                         width: 6,
                         height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.white70,
+                        decoration: BoxDecoration(
+                          color: scheme.textSecondary,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -528,6 +531,7 @@ class _MessageActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -538,7 +542,7 @@ class _MessageActions extends StatelessWidget {
             color:
                 message.isFavorite
                     ? _ChatPalette.accent
-                    : Colors.white.withValues(alpha: 0.5),
+                    : scheme.textSecondary,
             size: 22,
           ),
           tooltip: message.isFavorite ? 'Quitar de favoritos' : 'Guardar',
@@ -552,7 +556,7 @@ class _MessageActions extends StatelessWidget {
                   ..writeln('Compartido desde Maika');
             Share.share(buffer.toString());
           },
-          icon: const Icon(Icons.ios_share, color: Colors.white54, size: 20),
+          icon: Icon(Icons.ios_share, color: scheme.textSecondary, size: 20),
           tooltip: 'Compartir',
         ),
       ],
@@ -571,6 +575,7 @@ class _SuggestionChips extends StatelessWidget {
     if (suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
+    final scheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -581,16 +586,19 @@ class _SuggestionChips extends StatelessWidget {
                   (chip) => Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: ActionChip(
-                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      backgroundColor: scheme.overlayOnSurface(
+                        0.06,
+                        lightAlpha: 0.04,
+                      ),
                       shape: StadiumBorder(
                         side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.12),
+                          color: scheme.borderWithOverlay(0.12, lightAlpha: 0.08),
                         ),
                       ),
                       label: Text(
                         chip.title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: scheme.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -689,6 +697,7 @@ class _InputBarState extends State<_InputBar>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final isSending =
         widget.status == ChatViewStatus.sending ||
         widget.status == ChatViewStatus.receiving;
@@ -706,10 +715,10 @@ class _InputBarState extends State<_InputBar>
       return Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: _ChatPalette.background,
+        color: scheme.backgroundPrimary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
+            color: scheme.shadowWithOverlay(0.4, lightAlpha: 0.12),
             blurRadius: 24,
             offset: const Offset(0, -6),
           ),
@@ -724,7 +733,9 @@ class _InputBarState extends State<_InputBar>
                 padding: const EdgeInsets.all(10),
                 margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
-                color: _ChatPalette.warning.withValues(alpha: 0.12),
+                color: _ChatPalette.warning.withValues(
+                  alpha: scheme.brightness == Brightness.dark ? 0.12 : 0.18,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -734,8 +745,8 @@ class _InputBarState extends State<_InputBar>
                   Expanded(
                     child: Text(
                       'Estas offline. Guardaremos tus mensajes y los enviaremos cuando regreses.',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: scheme.textPrimary,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -761,15 +772,15 @@ class _InputBarState extends State<_InputBar>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: _ChatPalette.surface,
+                        color: scheme.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(22),
                       ),
                       child: TextField(
                         key: const ValueKey('chat_message_field'),
                         controller: widget.controller,
                         focusNode: widget.focusNode,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: scheme.textPrimary,
                           fontSize: 15,
                         ),
                         minLines: 1,
@@ -779,7 +790,7 @@ class _InputBarState extends State<_InputBar>
                           border: InputBorder.none,
                           hintText: placeholder,
                           hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: scheme.textSecondary,
                             fontSize: 14,
                           ),
                         ),
@@ -811,8 +822,8 @@ class _InputBarState extends State<_InputBar>
                             )
                             : LinearGradient(
                               colors: [
-                                Colors.white.withValues(alpha: 0.1),
-                                Colors.white.withValues(alpha: 0.05),
+                                scheme.overlayOnSurface(0.1, lightAlpha: 0.06),
+                                scheme.overlayOnSurface(0.05, lightAlpha: 0.03),
                               ],
                             ),
                     boxShadow: [
@@ -827,7 +838,10 @@ class _InputBarState extends State<_InputBar>
                   ),
                   child: Icon(
                     isSending ? Icons.hourglass_top : Icons.send_rounded,
-                    color: Colors.white,
+                    color:
+                        _isComposing && !isSending
+                            ? Colors.white
+                            : scheme.textPrimary,
                   ),
                 ),
               ),
@@ -847,6 +861,7 @@ class _ListMessageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -861,7 +876,7 @@ class _ListMessageContent extends StatelessWidget {
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: scheme.overlayOnSurface(0.08, lightAlpha: 0.04),
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -889,8 +904,8 @@ class _ListMessageContent extends StatelessWidget {
                                 children: [
                                   Text(
                                     item.title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: scheme.textPrimary,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
                                     ),
@@ -899,8 +914,8 @@ class _ListMessageContent extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       item.description,
-                                      style: const TextStyle(
-                                        color: Colors.white70,
+                                      style: TextStyle(
+                                        color: scheme.textSecondary,
                                         fontSize: 13,
                                         height: 1.4,
                                       ),
@@ -1013,12 +1028,13 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final isUser = message.type == MessageType.user;
     final alignment = isUser ? MainAxisAlignment.end : MainAxisAlignment.start;
     final bubbleColor =
-        isUser ? _ChatPalette.accent : _ChatPalette.messageSurface;
+        isUser ? _ChatPalette.accent : scheme.surfaceContainerHigh;
     final textColor =
-        isUser ? Colors.white : Colors.white.withValues(alpha: 0.9);
+        isUser ? Colors.white : scheme.textPrimary;
     final maxWidth = min(MediaQuery.of(context).size.width * 0.75, 420.0);
 
     final statusIcon = isUser ? _statusIcon(message.status) : null;
@@ -1068,7 +1084,7 @@ class _ChatBubble extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white70.withValues(alpha: 0.8),
+                    color: isUser ? Colors.white70.withValues(alpha: 0.85) : scheme.textSecondary,
                     fontSize: 11,
                   ),
                 ),
@@ -1096,16 +1112,19 @@ class _ChatBubble extends StatelessWidget {
                   message.quickReplies
                       .map(
                         (chip) => ActionChip(
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          backgroundColor: scheme.overlayOnSurface(
+                            0.05,
+                            lightAlpha: 0.04,
+                          ),
                           shape: StadiumBorder(
                             side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.12),
+                              color: scheme.borderWithOverlay(0.12, lightAlpha: 0.08),
                             ),
                           ),
                           label: Text(
                             chip.title,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: scheme.textPrimary,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1161,7 +1180,7 @@ class _ChatBubble extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
+                          color: scheme.shadowWithOverlay(0.35, lightAlpha: 0.1),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -1220,8 +1239,9 @@ class _ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      color: _ChatPalette.background,
+      color: scheme.backgroundPrimary,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Row(
         children: [
@@ -1240,7 +1260,7 @@ class _ChatHeader extends StatelessWidget {
                         'Maika (BETA)',
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
+                                  color: scheme.textPrimary,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1255,14 +1275,14 @@ class _ChatHeader extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: scheme.overlayOnSurface(0.08, lightAlpha: 0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Tu asistente biblico',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: scheme.textSecondary,
                             fontSize: 11,
                             letterSpacing: 0.2,
                           ),
@@ -1301,8 +1321,8 @@ class _ChatHeader extends StatelessWidget {
                       child: Text(
                         isConnected ? 'Conectado a Rasa' : 'Sin conexion',
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        style: TextStyle(
+                          color: scheme.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -1320,9 +1340,9 @@ class _ChatHeader extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(
+            icon: Icon(
               Icons.face_retouching_natural,
-              color: Colors.white70,
+              color: scheme.textSecondary,
             ),
             tooltip: 'Chat con avatar',
           ),
@@ -1331,7 +1351,7 @@ class _ChatHeader extends StatelessWidget {
                 () => context.read<ChatBloc>().add(
                   const ChatPendingRetryRequested(),
                 ),
-            icon: const Icon(Icons.sync, color: Colors.white70),
+            icon: Icon(Icons.sync, color: scheme.textSecondary),
             tooltip: 'Sincronizar pendientes',
           ),
         ],

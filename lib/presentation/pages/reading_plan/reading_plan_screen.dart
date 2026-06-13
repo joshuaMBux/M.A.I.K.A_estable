@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/di/injection_container.dart' as di;
+import '../../../core/theme/theme_extensions.dart';
 import '../../blocs/reading_plan/reading_plan_bloc.dart';
 import '../../blocs/reading_plan/reading_plan_event.dart';
 import '../../blocs/reading_plan/reading_plan_state.dart';
@@ -24,12 +25,12 @@ class _ReadingPlanView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         title: const Text('Plan de Lectura'),
-        backgroundColor: const Color(0xFF6B46C1),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
       ),
       body: BlocConsumer<ReadingPlanBloc, ReadingPlanState>(
         listener: (context, state) {
@@ -78,18 +79,19 @@ class _ReadingPlanErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.white70),
+            Icon(Icons.error_outline, size: 64, color: scheme.textSecondary),
             const SizedBox(height: 16),
             Text(
               'No se pudo cargar el plan',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
+                color: scheme.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -99,7 +101,7 @@ class _ReadingPlanErrorView extends StatelessWidget {
               error,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              ).textTheme.bodyMedium?.copyWith(color: scheme.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -129,6 +131,7 @@ class _ReadingPlanContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final progressPercent = (plan.progress * 100).round();
     final completedLabel =
         '${plan.completedDays}/${plan.totalDays} dias completados';
@@ -144,7 +147,7 @@ class _ReadingPlanContent extends StatelessWidget {
       Text(
         'Lecturas diarias',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: Colors.white,
+          color: scheme.textPrimary,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -156,13 +159,15 @@ class _ReadingPlanContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: scheme.overlayOnSurface(0.08, lightAlpha: 0.04),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            border: Border.all(
+              color: scheme.borderWithOverlay(0.15, lightAlpha: 0.08),
+            ),
           ),
-          child: const Text(
+          child: Text(
             'Todavia no hay lecturas asignadas para este plan.',
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: scheme.textSecondary),
             textAlign: TextAlign.center,
           ),
         ),
@@ -200,6 +205,7 @@ class _PlanSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -211,7 +217,7 @@ class _PlanSummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: scheme.shadowWithOverlay(0.35, lightAlpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, 12),
           ),
@@ -229,8 +235,8 @@ class _PlanSummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       plan.name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.onPrimary,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
@@ -240,7 +246,7 @@ class _PlanSummaryCard extends StatelessWidget {
                       plan.description ??
                           'Acompanate de Maika mientras avanzas dia a dia.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
+                        color: scheme.onPrimary.withValues(alpha: 0.85),
                         fontSize: 14,
                         height: 1.4,
                       ),
@@ -255,7 +261,7 @@ class _PlanSummaryCard extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: scheme.onPrimary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -268,8 +274,8 @@ class _PlanSummaryCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '${plan.totalDays} dias',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.onPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -296,8 +302,8 @@ class _PlanSummaryCard extends StatelessWidget {
             children: [
               Text(
                 '$progressPercent%',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -306,7 +312,7 @@ class _PlanSummaryCard extends StatelessWidget {
               Text(
                 completedLabel,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: scheme.onPrimary.withValues(alpha: 0.85),
                   fontSize: 13,
                 ),
               ),
@@ -336,6 +342,7 @@ class _ReadingPlanDayTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final bloc = context.read<ReadingPlanBloc>();
     final isCompleted = day.completed;
 
@@ -343,14 +350,16 @@ class _ReadingPlanDayTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: scheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: isCompleted ? 0.35 : 0.15),
+          color: isCompleted
+              ? const Color(0xFF10B981).withValues(alpha: 0.28)
+              : scheme.borderWithOverlay(0.15, lightAlpha: 0.08),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
+            color: scheme.shadowWithOverlay(0.25, lightAlpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -397,8 +406,8 @@ class _ReadingPlanDayTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         day.reference,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: scheme.textPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                         ),
@@ -432,7 +441,7 @@ class _ReadingPlanDayTile extends StatelessWidget {
                   Text(
                     day.comment!,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
+                      color: scheme.textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -454,7 +463,7 @@ class _ReadingPlanDayTile extends StatelessWidget {
                     );
                   },
             activeColor: const Color(0xFF10B981),
-            side: const BorderSide(color: Colors.white54),
+            side: BorderSide(color: scheme.textSecondary),
           ),
         ],
       ),

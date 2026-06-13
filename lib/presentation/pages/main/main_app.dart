@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/theme_extensions.dart';
 import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../chat/chat_screen.dart';
@@ -35,51 +36,47 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       body: Stack(
         children: [
-          // Fondo con gradiente sutil
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
-          // Contenido principal
           _screens[_currentIndex],
         ],
       ),
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(16),
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(25),
+          color: scheme.overlayOnSurface(0.18, lightAlpha: 0.04),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: scheme.borderWithOverlay(0.1, lightAlpha: 0.08),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: scheme.shadowWithOverlay(0.3, lightAlpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(22),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.transparent,
             elevation: 0,
-            selectedItemColor: const Color(0xFF6B46C1),
-            unselectedItemColor: Colors.white.withValues(alpha: 0.6),
+            selectedItemColor: scheme.primary,
+            unselectedItemColor: scheme.textSecondary,
             showSelectedLabels: false,
             showUnselectedLabels: false,
             selectedLabelStyle: const TextStyle(
@@ -88,15 +85,15 @@ class _MainAppState extends State<MainApp> {
             ),
             unselectedLabelStyle: TextStyle(
               fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.6),
+              color: scheme.textSecondary,
             ),
             items: [
-              _buildNavItem(Icons.home, 'Inicio', 0),
-              _buildNavItem(Icons.explore, 'Explorar', 1),
-              _buildNavItem(Icons.chat, 'Chat', 2),
-              _buildNavItem(Icons.favorite, 'Favoritos', 3),
-              _buildNavItem(Icons.sports_esports, 'Minijuegos', 4),
-              _buildNavItem(Icons.person, 'Perfil', 5),
+              _buildNavItem(context, Icons.home, 'Inicio', 0),
+              _buildNavItem(context, Icons.explore, 'Explorar', 1),
+              _buildNavItem(context, Icons.chat, 'Chat', 2),
+              _buildNavItem(context, Icons.favorite, 'Favoritos', 3),
+              _buildNavItem(context, Icons.sports_esports, 'Minijuegos', 4),
+              _buildNavItem(context, Icons.person, 'Perfil', 5),
             ],
           ),
         ),
@@ -105,52 +102,51 @@ class _MainAppState extends State<MainApp> {
   }
 
   BottomNavigationBarItem _buildNavItem(
+    BuildContext context,
     IconData icon,
     String label,
     int index,
   ) {
     final isSelected = _currentIndex == index;
+    final scheme = Theme.of(context).colorScheme;
 
     return BottomNavigationBarItem(
       icon: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isSelected)
               Container(
-                width: 4,
-                height: 4,
+                width: 3,
+                height: 3,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6B46C1),
-                  borderRadius: BorderRadius.circular(2),
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(1.5),
                 ),
               ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color:
                     isSelected
-                        ? const Color(0xFF6B46C1).withValues(alpha: 0.2)
+                        ? scheme.primary.withValues(alpha: 0.16)
                         : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color:
                       isSelected
-                          ? const Color(0xFF6B46C1).withValues(alpha: 0.3)
+                          ? scheme.primary.withValues(alpha: 0.28)
                           : Colors.transparent,
                   width: 1,
                 ),
               ),
               child: Icon(
                 icon,
-                size: 22,
-                color:
-                    isSelected
-                        ? const Color(0xFF6B46C1)
-                        : Colors.white.withValues(alpha: 0.6),
+                size: 20,
+                color: isSelected ? scheme.primary : scheme.textSecondary,
               ),
             ),
           ],

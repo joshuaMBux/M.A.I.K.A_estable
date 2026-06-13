@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/theme_extensions.dart';
 import '../../widgets/glass_card.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -22,9 +23,10 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: scheme.backgroundPrimary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -34,12 +36,8 @@ class AboutScreen extends StatelessWidget {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-              ),
+            decoration: BoxDecoration(
+              gradient: scheme.pageGradient,
             ),
           ),
           SafeArea(
@@ -56,7 +54,10 @@ class AboutScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: scheme.borderWithOverlay(
+                              0.25,
+                              lightAlpha: 0.12,
+                            ),
                           ),
                         ),
                         child: ClipRRect(
@@ -75,21 +76,21 @@ class AboutScreen extends StatelessWidget {
                             Text(
                               'Maika',
                               style: textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
+                                color: scheme.textPrimary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               'Tu asistente bíblico personal',
                               style: textTheme.bodySmall?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.9),
+                                color: scheme.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Explora la Biblia con chat de IA, minijuegos y planes de lectura en un solo lugar.',
                               style: textTheme.bodySmall?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.8),
+                                color: scheme.textSecondary,
                                 height: 1.3,
                               ),
                             ),
@@ -135,7 +136,7 @@ class AboutScreen extends StatelessWidget {
                       Text(
                         'Desarrollador',
                         style: textTheme.titleSmall?.copyWith(
-                          color: Colors.white,
+                          color: scheme.textPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -153,9 +154,12 @@ class AboutScreen extends StatelessWidget {
                               onPressed: () => _openUrl(
                                   context, 'https://github.com/joshuaMBux'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
+                                foregroundColor: scheme.textPrimary,
                                 side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: scheme.borderWithOverlay(
+                                    0.6,
+                                    lightAlpha: 0.2,
+                                  ),
                                 ),
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 10),
@@ -175,9 +179,12 @@ class AboutScreen extends StatelessWidget {
                                 'https://www.linkedin.com/in/josue-moya-a94299322',
                               ),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
+                                foregroundColor: scheme.textPrimary,
                                 side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: scheme.borderWithOverlay(
+                                    0.6,
+                                    lightAlpha: 0.2,
+                                  ),
                                 ),
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 10),
@@ -217,6 +224,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,13 +233,13 @@ class _InfoRow extends StatelessWidget {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: scheme.overlayOnSurface(0.08, lightAlpha: 0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
             size: 18,
-            color: Colors.white.withValues(alpha: 0.9),
+            color: scheme.textPrimary,
           ),
         ),
         const SizedBox(width: 12),
@@ -242,7 +250,7 @@ class _InfoRow extends StatelessWidget {
               Text(
                 title,
                 style: textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
+                  color: scheme.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -250,7 +258,7 @@ class _InfoRow extends StatelessWidget {
               Text(
                 subtitle,
                 style: textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: scheme.textSecondary,
                 ),
               ),
             ],

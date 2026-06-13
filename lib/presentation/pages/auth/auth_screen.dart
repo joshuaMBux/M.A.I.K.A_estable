@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_extensions.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../main/main_app.dart';
 
@@ -47,10 +48,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
+      backgroundColor: scheme.backgroundPrimary,
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthSuccess) {
@@ -64,15 +66,8 @@ class _AuthScreenState extends State<AuthScreen> {
           }
         },
         child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.darkBackground,
-                AppColors.darkSurfaceVariant,
-              ],
-            ),
+          decoration: BoxDecoration(
+            gradient: scheme.pageGradient,
           ),
           child: SafeArea(
             child: SingleChildScrollView(
@@ -98,12 +93,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         borderRadius: BorderRadius.circular(60),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: scheme.onPrimary.withValues(alpha: 0.18),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: scheme.shadowWithOverlay(
+                              0.35,
+                              lightAlpha: 0.14,
+                            ),
                             blurRadius: 25,
                             offset: const Offset(0, 15),
                           ),
@@ -119,7 +117,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       AppConstants.appName,
                       style: textTheme.headlineLarge?.copyWith(
-                        color: colorScheme.onPrimary,
+                        color: scheme.textPrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -127,7 +125,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       AppConstants.appSubtitle,
                       style: textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onPrimary.withValues(alpha: 0.7),
+                        color: scheme.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 48),
@@ -135,15 +133,22 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Campos de entrada
                     Container(
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.92),
+                        color: scheme.surfaceContainerHigh.withValues(
+                          alpha: 0.94,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.06),
+                          color: scheme.borderWithOverlay(
+                            0.14,
+                            lightAlpha: 0.08,
+                          ),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
+                            color: scheme.shadowWithOverlay(
+                              0.28,
+                              lightAlpha: 0.08,
+                            ),
                             blurRadius: 30,
                             offset: const Offset(0, 18),
                           ),
@@ -222,15 +227,15 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ? null
                                       : _handleAuth,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: colorScheme.primary,
-                                    foregroundColor: colorScheme.onPrimary,
+                                    backgroundColor: scheme.primary,
+                                    foregroundColor: scheme.onPrimary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   child: state is AuthLoading
-                                      ? const CircularProgressIndicator(
-                                          color: Colors.white,
+                                      ? CircularProgressIndicator(
+                                          color: scheme.onPrimary,
                                         )
                                       : Text(
                                           _isLogin
@@ -258,7 +263,8 @@ class _AuthScreenState extends State<AuthScreen> {
                             ? '¿No tienes cuenta? Regístrate'
                             : '¿Ya tienes cuenta? Inicia sesión',
                         style: TextStyle(
-                          color: colorScheme.onPrimary.withValues(alpha: 0.85),
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
