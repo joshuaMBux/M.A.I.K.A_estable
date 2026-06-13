@@ -9,6 +9,8 @@
 
 ![Portada](docs/images/cover.png)
 
+**M.A.I.K.A** significa **Modelo Artificial Inteligente Keeper Asistente**.
+
 M.A.I.K.A fue pensada para acercar la Biblia al dia a dia de los jovenes con una experiencia mas visual, mas cercana y mas interactiva. La app combina lectura, acompanamiento, conversacion, juegos y contenido espiritual en un solo lugar.
 
 ## Pensada Para
@@ -100,7 +102,43 @@ flutter pub get
 flutter run
 ```
 
-### Generar APK release
+### Flujo rapido para dev
+
+```powershell
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```
+
+### Puntos de entrada utiles
+
+- `lib/main.dart`: arranque de la app y providers globales
+- `lib/presentation/pages/main/main_app.dart`: navegacion principal
+- `lib/core/di/injection_container.dart`: dependencias y servicios
+- `lib/core/theme/`: tema, color scheme y extensiones visuales
+
+### Donde tocar cada modulo
+
+- chat y avatar: `lib/presentation/pages/chat/`
+- explorar versiculos: `lib/presentation/pages/explore/`
+- favoritos: `lib/presentation/pages/favorites/`
+- devocionales: `lib/presentation/pages/devotional/`
+- plan de lectura: `lib/presentation/pages/reading_plan/`
+- juegos: `lib/presentation/pages/games/` y `lib/presentation/games/maika_fragmentada/`
+- perfil y ajustes: `lib/presentation/pages/profile/`
+
+### Comandos utiles
+
+```powershell
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --debug
+flutter build apk --release
+```
+
+### APK release
 
 ```powershell
 flutter clean
